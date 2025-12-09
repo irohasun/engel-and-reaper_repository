@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-tavern-bg text-tavern-cream font-lora antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-cinzel;
+  }
+}
+
+@layer components {
+  .btn-gold {
+    @apply px-6 py-3 bg-gradient-to-b from-tavern-gold to-tavern-leather
+           text-tavern-bg font-cinzel font-semibold rounded-lg
+           border-2 border-tavern-gold-light
+           shadow-gold hover:shadow-lg
+           transition-all duration-200
+           hover:from-tavern-gold-light hover:to-tavern-gold
+           active:scale-95;
+  }
+
+  .btn-wood {
+    @apply px-6 py-3 bg-gradient-to-b from-tavern-wood-light to-tavern-wood
+           text-tavern-cream font-cinzel font-medium rounded-lg
+           border-2 border-tavern-leather
+           shadow-card hover:shadow-card-hover
+           transition-all duration-200
+           hover:border-tavern-gold
+           active:scale-95;
+  }
+
+  .card-base {
+    @apply w-20 h-28 rounded-lg shadow-card
+           transition-all duration-300
+           cursor-pointer select-none;
+  }
+
+  .card-back {
+    @apply card-base bg-parchment-texture
+           border-2 border-tavern-gold/50;
+  }
+
+  .play-mat {
+    @apply rounded-full bg-tavern-wood-light
+           border-4 border-tavern-leather
+           shadow-inner-gold;
+  }
+
+  .play-mat-reach {
+    @apply ring-4 ring-tavern-gold animate-pulse-gold;
+  }
+}
+
+@layer utilities {
+  .text-shadow-gold {
+    text-shadow: 0 0 10px rgba(201, 162, 39, 0.5);
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
