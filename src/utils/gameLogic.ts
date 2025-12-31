@@ -193,6 +193,7 @@ export function getPhaseDisplayName(phase: GameState['phase']): string {
     bidding: 'Bidding',
     resolution: 'Reveal Cards',
     penalty: 'Penalty',
+    next_player_selection: 'Select Next Player',
     round_end: 'Round End',
     game_over: 'Game Over',
   };

@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useState, type ReactNode } from 'react';
 import type { GameState, GameAction, Player, LogEntry } from '../types/game';
 import {
   getInitialGameState,
@@ -39,12 +39,24 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       const updatedPlayers = state.players.map((p) => {
         if (p.id !== playerId) return p;
+        
+        // 新しい手札を作成（選択したカードを削除）
         const newHand = [...p.hand];
         newHand.splice(cardIndex, 1);
+        
+        // 既にスタックにカードがある場合、そのカードを手札に戻す
+        let handWithReturnedCard = newHand;
+        if (p.stack.length > 0) {
+          // スタックのカードを手札に戻す（手札ではisRevealedはfalseにする）
+          const returnedCard = { ...p.stack[0], isRevealed: false };
+          handWithReturnedCard = [...newHand, returnedCard];
+        }
+        
+        // スタックを新しいカード1枚のみにする（置き換え）
         return {
           ...p,
-          hand: newHand,
-          stack: [...p.stack, { ...card, isRevealed: false }],
+          hand: handWithReturnedCard,
+          stack: [{ ...card, isRevealed: false }],
         };
       });
 
@@ -52,6 +64,33 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         players: updatedPlayers,
         logs: [...state.logs, createLog('place_card', playerId)],
+      };
+    }
+
+    case 'RETURN_INITIAL_CARD': {
+      const { playerId } = action;
+      const player = getPlayerById(state, playerId);
+      if (!player || player.isReady) return state;
+      if (state.phase !== 'round_setup') return state;
+      
+      // スタックにカードがない場合は何もしない
+      if (player.stack.length === 0) return state;
+
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id !== playerId) return p;
+        
+        // スタックのカードを手札に戻す
+        const returnedCard = { ...p.stack[0], isRevealed: false };
+        return {
+          ...p,
+          hand: [...p.hand, returnedCard],
+          stack: [],
+        };
+      });
+
+      return {
+        ...state,
+        players: updatedPlayers,
       };
     }
 
@@ -114,6 +153,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       const totalCards = getTotalStackCount(state);
       if (amount < 1 || amount > totalCards) return state;
+
+      // 最高枚数（場の全カード枚数）を選択した場合、即座に判定フェーズへ移行
+      if (amount === totalCards) {
+        return {
+          ...state,
+          phase: 'resolution',
+          bidAmount: amount,
+          highestBidderId: playerId,
+          bidStarterId: playerId,
+          cardsToReveal: amount,
+          revealingPlayerId: playerId,
+          logs: [...state.logs, createLog('bid_start', playerId, amount)],
+        };
+      }
 
       const nextPlayerId = getNextPlayerId(state, playerId);
 
@@ -309,6 +362,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const updatedBidder = updatedPlayers.find((p) => p.id === state.highestBidderId);
       const totalCards = (updatedBidder?.hand.length || 0) + (updatedBidder?.stack.length || 0);
 
+      // カードが0枚になった場合は脱落
       if (totalCards === 0) {
         updatedPlayers = updatedPlayers.map((p) => {
           if (p.id !== state.highestBidderId) return p;
@@ -316,6 +370,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         });
 
         const alivePlayers = updatedPlayers.filter((p) => p.isAlive);
+        
+        // 勝者が1人だけになった場合はゲーム終了
         if (alivePlayers.length === 1) {
           return {
             ...state,
@@ -330,6 +386,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           };
         }
 
+        // 自分の死神で脱落した場合は、次プレイヤー選択フェーズへ
+        const isOwnReaper = state.reaperOwnerId === state.highestBidderId;
+        if (isOwnReaper) {
+          return {
+            ...state,
+            players: updatedPlayers,
+            phase: 'next_player_selection',
+            logs: [...state.logs, createLog('eliminate', state.highestBidderId)],
+          };
+        }
+
+        // 他人の死神で脱落した場合は、ラウンド終了へ
         return {
           ...state,
           players: updatedPlayers,
@@ -338,6 +406,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
+      // カードが残っている場合は、ラウンド終了へ
       return {
         ...state,
         players: updatedPlayers,
@@ -347,12 +416,42 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'SELECT_NEXT_PLAYER': {
       const { nextPlayerId } = action;
+      if (state.phase !== 'next_player_selection') return state;
+      
       const nextPlayer = getPlayerById(state, nextPlayerId);
       if (!nextPlayer || !nextPlayer.isAlive) return state;
 
+      // 次プレイヤーを選択したら、ラウンド準備フェーズへ
+      // プレイヤーの状態をリセット（準備完了フラグ、パスフラグなど）
+      const updatedPlayers = state.players.map((p) => {
+        if (!p.isAlive) return p;
+        // 場のカードを手札に戻す（脱落したプレイヤーの場のカードは既に除外されている）
+        const returnedCards = p.stack.map((card) => ({
+          ...card,
+          isRevealed: false,
+        }));
+        return {
+          ...p,
+          hand: [...p.hand, ...returnedCards],
+          stack: [],
+          isReady: false,
+          hasPassed: false,
+        };
+      });
+
       return {
         ...state,
+        players: updatedPlayers,
         turnPlayerId: nextPlayerId,
+        phase: 'round_setup',
+        currentRound: state.currentRound + 1,
+        bidAmount: 0,
+        highestBidderId: null,
+        bidStarterId: null,
+        reaperOwnerId: null,
+        revealedCards: [],
+        cardsToReveal: 0,
+        revealingPlayerId: null,
       };
     }
 
@@ -401,8 +500,6 @@ export function useGame() {
   }
   return context;
 }
-
-import { useState } from 'react';
 
 export function useTestMode() {
   const { state, dispatch, currentViewPlayerId, setCurrentViewPlayerId } = useGame();

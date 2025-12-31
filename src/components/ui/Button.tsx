@@ -43,6 +43,7 @@ export function Button({
         variant === 'wood' && styles.textWood,
         variant === 'ghost' && styles.textGhost,
       ]}
+      textAlignVertical="center"
     >
       {children}
     </Text>
@@ -138,6 +139,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: `${colors.tavern.gold}4D`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ghostPressed: {
     backgroundColor: `${colors.tavern.gold}1A`,
@@ -146,6 +149,8 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '600',
     textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false, // Androidでテキストの垂直位置を正確に調整
   },
   textGold: {
     color: colors.tavern.bg,

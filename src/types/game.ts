@@ -8,6 +8,7 @@ export type GamePhase =
   | 'bidding'
   | 'resolution'
   | 'penalty'
+  | 'next_player_selection'
   | 'round_end'
   | 'game_over';
 
@@ -74,6 +75,7 @@ export interface GameState {
 export type GameAction =
   | { type: 'INITIALIZE_GAME'; players: Player[] }
   | { type: 'PLACE_INITIAL_CARD'; playerId: string; cardIndex: number }
+  | { type: 'RETURN_INITIAL_CARD'; playerId: string }
   | { type: 'SET_READY'; playerId: string }
   | { type: 'PLACE_CARD'; playerId: string; cardIndex: number }
   | { type: 'START_BIDDING'; playerId: string; amount: number }

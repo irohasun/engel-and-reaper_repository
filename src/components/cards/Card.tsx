@@ -1,6 +1,12 @@
-import React from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Pressable, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Sparkles, Skull } from '../icons/Icons';
 import type { Card as CardType, ThemeColor } from '../../types/game';
@@ -18,9 +24,9 @@ interface CardProps {
 }
 
 const cardSizes = {
-  sm: { width: 48, height: 64 },
+  sm: { width: 35, height: 47 }, // プレイマット縮小に合わせて約27%縮小（48*0.73≈35, 64*0.73≈47）
   md: { width: 80, height: 112 },
-  lg: { width: 112, height: 160 },
+  lg: { width: 90, height: 128 }, // プレイマット縮小に合わせて約20%縮小（112*0.8=90, 160*0.8=128）
 };
 
 const colorGradients: Record<ThemeColor, string[]> = {
@@ -43,22 +49,83 @@ export function Card({
 }: CardProps) {
   const showFace = isRevealed || card?.isRevealed;
   const dimensions = cardSizes[size];
+  
+  // フリップアニメーション用の値（0 = 裏面、1 = 表面）
+  const flipValue = useSharedValue(showFace ? 1 : 0);
+
+  // カードが表示されるべき状態が変わったらアニメーション
+  useEffect(() => {
+    flipValue.value = withTiming(showFace ? 1 : 0, {
+      duration: 600,
+    });
+  }, [showFace, flipValue]);
+
+  // フロント側のアニメーションスタイル
+  const frontAnimatedStyle = useAnimatedStyle(() => {
+    const rotateY = interpolate(flipValue.value, [0, 1], [180, 0]);
+    const opacity = interpolate(flipValue.value, [0, 0.5, 1], [0, 0, 1]);
+    
+    return {
+      transform: [{ rotateY: `${rotateY}deg` }],
+      opacity,
+      backfaceVisibility: 'hidden',
+    };
+  });
+
+  // バック側のアニメーションスタイル
+  const backAnimatedStyle = useAnimatedStyle(() => {
+    const rotateY = interpolate(flipValue.value, [0, 1], [0, 180]);
+    const opacity = interpolate(flipValue.value, [0, 0.5, 1], [1, 0, 0]);
+    
+    return {
+      transform: [{ rotateY: `${rotateY}deg` }],
+      opacity,
+      backfaceVisibility: 'hidden',
+    };
+  });
+
+  const containerStyle: ViewStyle = [
+    styles.container,
+    dimensions,
+    isSelected && styles.selected,
+    isDisabled && styles.disabled,
+  ];
+
+  // onPressがない場合はViewを使用（外側のPressableで処理）
+  if (!onPress) {
+    return (
+      <View style={containerStyle}>
+        {/* バック面 */}
+        <Animated.View style={[StyleSheet.absoluteFill, backAnimatedStyle]}>
+          <CardBack themeColor={themeColor} size={size} />
+        </Animated.View>
+        
+        {/* フロント面 */}
+        {card && (
+          <Animated.View style={[StyleSheet.absoluteFill, frontAnimatedStyle]}>
+            <CardFace card={card} size={size} />
+          </Animated.View>
+        )}
+      </View>
+    );
+  }
 
   return (
     <Pressable
       onPress={!isDisabled ? onPress : undefined}
       disabled={isDisabled}
-      style={[
-        styles.container,
-        dimensions,
-        isSelected && styles.selected,
-        isDisabled && styles.disabled,
-      ]}
+      style={containerStyle}
     >
-      {showFace && card ? (
-        <CardFace card={card} size={size} />
-      ) : (
+      {/* バック面 */}
+      <Animated.View style={[StyleSheet.absoluteFill, backAnimatedStyle]}>
         <CardBack themeColor={themeColor} size={size} />
+      </Animated.View>
+      
+      {/* フロント面 */}
+      {card && (
+        <Animated.View style={[StyleSheet.absoluteFill, frontAnimatedStyle]}>
+          <CardFace card={card} size={size} />
+        </Animated.View>
       )}
     </Pressable>
   );
@@ -79,7 +146,8 @@ function CardBack({ themeColor, size }: { themeColor: ThemeColor; size: 'sm' | '
 
 function CardFace({ card, size }: { card: CardType; size: 'sm' | 'md' | 'lg' }) {
   const isAngel = card.type === 'angel';
-  const iconSize = size === 'sm' ? 20 : size === 'md' ? 32 : 48;
+  // プレイマット縮小に合わせてアイコンサイズも調整
+  const iconSize = size === 'sm' ? 15 : size === 'md' ? 32 : 38; // sm: 20*0.73≈15, lg: 48*0.8=38
 
   return (
     <LinearGradient
@@ -174,6 +242,13 @@ const styles = StyleSheet.create({
   },
   selected: {
     transform: [{ scale: 1.1 }],
+    borderWidth: 3,
+    borderColor: colors.tavern.gold,
+    shadowColor: colors.tavern.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 8,
   },
   disabled: {
     opacity: 0.5,
