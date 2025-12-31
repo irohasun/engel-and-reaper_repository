@@ -74,7 +74,10 @@ AI駆動開発において、明確なロジックと状態遷移を定義する
    - 手札がある場合のみ選択可能。
    - 手札から1枚選び、自分の場のカードの上に裏向きで重ねる。
    - **確認不可**: 一度場に出したカードの内容（天使か死神か）は、自分でも確認できない（記憶頼み）。
-   - 手番は次のプレイヤーへ。
+   - **カード配置後の操作**:
+     - カードを配置すると「Ready」ボタンが表示される。
+     - **プレイマットをタップ**: 配置したカードを手札に戻してやり直し可能。
+     - **Readyボタンを押す**: 配置を確定し、手番は次のプレイヤーへ移る。
 2. **入札開始 (Bid Start)**:
    - 自分の場に少なくとも1枚カードがある場合に選択可能。
    - **先手プレイヤーも、2枚目を置かずに即座に入札開始可能**。
@@ -130,11 +133,17 @@ AI駆動開発において、明確なロジックと状態遷移を定義する
    - 自分の死神をめくって失敗した場合でも、めくった死神カード自体は即座に除外されない。
    - 最高入札者は**手持ちカードから任意で1枚選び**、ゲームから除外する。
    - どのカードを除外するかは自由選択（任意の手札）。
+   - **UI処理**: 選択画面では**全てのカードが表向き**で表示され、何を捨てるか確認できる。
 2. **他人の死神で失敗した場合**:
    - **UI処理**: 最高入札者の手持ちカードが、死神を出していたプレイヤーの画面に**裏向きで表示**される。
    - 死神を出していたプレイヤーがその中から**1枚選び**、ゲームから除外する（ランダム選択でも可）。
    - めくられた死神カード自体は即座に除外されない。除外されるのは相手が選んだ1枚のみ。
    - **非公開**: 除外されたカードの種類（天使/死神）は、**他のプレイヤーには公開されない**（ログにも出さない）。
+
+**ペナルティカード選択UI**:
+- カードを選択すると**拡大表示**される（選択状態を示す）。
+- 「**Confirm**」ボタンを押すことで除外が確定する。
+- 同じカードを再度タップすると選択解除可能。
 
 **脱落判定**:
 - **カードが0枚になった場合**: そのプレイヤーは**失格（脱落）**となる。
@@ -316,6 +325,7 @@ interface GameState {
   winnerId: string | null;              // 勝者ID
   cardsToReveal: number;                // 残りめくる枚数
   revealingPlayerId: string | null;     // めくっているプレイヤーID
+  turnStartStackCounts: Record<string, number>; // 手番開始時の各プレイヤーのスタック枚数
 }
 ```
 
@@ -352,8 +362,11 @@ interface Card {
 type GameAction =
   | { type: 'INITIALIZE_GAME'; players: Player[] }
   | { type: 'PLACE_INITIAL_CARD'; playerId: string; cardIndex: number }
+  | { type: 'RETURN_INITIAL_CARD'; playerId: string }
   | { type: 'SET_READY'; playerId: string }
   | { type: 'PLACE_CARD'; playerId: string; cardIndex: number }
+  | { type: 'RETURN_PLACED_CARD'; playerId: string }
+  | { type: 'CONFIRM_PLACEMENT'; playerId: string }
   | { type: 'START_BIDDING'; playerId: string; amount: number }
   | { type: 'RAISE_BID'; playerId: string; amount: number }
   | { type: 'PASS_BID'; playerId: string }

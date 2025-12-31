@@ -70,6 +70,7 @@ export function getInitialGameState(players: Player[]): GameState {
     winnerId: null,
     cardsToReveal: 0,
     revealingPlayerId: null,
+    turnStartStackCounts: {}, // placementフェーズ開始時に初期化される
   };
 }
 
@@ -183,6 +184,7 @@ export function prepareNextRound(state: GameState): Partial<GameState> {
     revealedCards: [],
     cardsToReveal: 0,
     revealingPlayerId: null,
+    turnStartStackCounts: {}, // placementフェーズ開始時に初期化される
   };
 }
 

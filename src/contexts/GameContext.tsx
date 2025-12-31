@@ -105,11 +105,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         .every((p) => p.isReady && p.stack.length > 0);
 
       if (allReady) {
+        // placementフェーズ開始時に、全プレイヤーの現在のスタック枚数を記録
+        const turnStartStackCounts: Record<string, number> = {};
+        updatedPlayers.forEach((p) => {
+          if (p.isAlive) {
+            turnStartStackCounts[p.id] = p.stack.length;
+          }
+        });
+
         return {
           ...state,
           players: updatedPlayers,
           phase: 'placement',
           turnPlayerId: state.turnPlayerId,
+          turnStartStackCounts,
         };
       }
 
@@ -137,13 +146,63 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       });
 
-      const nextPlayerId = getNextPlayerId(state, playerId);
+      // 2枚目を配置した後は、自動的に次のプレイヤーに移らず、待機状態にする
+      // プレイヤーがReadyボタンを押すまで待つ
+      return {
+        ...state,
+        players: updatedPlayers,
+        // turnPlayerIdは変更しない（同じプレイヤーのまま）
+        logs: [...state.logs, createLog('place_card', playerId)],
+      };
+    }
+
+    case 'RETURN_PLACED_CARD': {
+      const { playerId } = action;
+      if (state.phase !== 'placement' || state.turnPlayerId !== playerId) return state;
+
+      const player = getPlayerById(state, playerId);
+      if (!player || player.stack.length === 0) return state;
+
+      // 最後に配置したカード（2枚目）を手札に戻す
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id !== playerId) return p;
+        const lastCard = p.stack[p.stack.length - 1];
+        const newStack = [...p.stack];
+        newStack.pop();
+        return {
+          ...p,
+          hand: [...p.hand, { ...lastCard, isRevealed: false }],
+          stack: newStack,
+        };
+      });
 
       return {
         ...state,
         players: updatedPlayers,
+      };
+    }
+
+    case 'CONFIRM_PLACEMENT': {
+      const { playerId } = action;
+      if (state.phase !== 'placement' || state.turnPlayerId !== playerId) return state;
+
+      const player = getPlayerById(state, playerId);
+      if (!player || player.stack.length === 0) return state;
+
+      // 配置を確定して、次のプレイヤーにターンが移る
+      const nextPlayerId = getNextPlayerId(state, playerId);
+      const nextPlayer = getPlayerById(state, nextPlayerId);
+
+      // 次のプレイヤーの現在のスタック枚数を記録（ターン開始時点）
+      const updatedTurnStartStackCounts = {
+        ...state.turnStartStackCounts,
+        [nextPlayerId]: nextPlayer?.stack.length || 0,
+      };
+
+      return {
+        ...state,
         turnPlayerId: nextPlayerId,
-        logs: [...state.logs, createLog('place_card', playerId)],
+        turnStartStackCounts: updatedTurnStartStackCounts,
       };
     }
 
@@ -452,6 +511,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         revealedCards: [],
         cardsToReveal: 0,
         revealingPlayerId: null,
+        turnStartStackCounts: {}, // round_setupフェーズではリセット
       };
     }
 

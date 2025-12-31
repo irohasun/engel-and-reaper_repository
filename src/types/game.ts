@@ -70,6 +70,7 @@ export interface GameState {
   winnerId: string | null;
   cardsToReveal: number;
   revealingPlayerId: string | null;
+  turnStartStackCounts: Record<string, number>; // placementフェーズでターン開始時の各プレイヤーのスタック枚数
 }
 
 export type GameAction =
@@ -78,6 +79,8 @@ export type GameAction =
   | { type: 'RETURN_INITIAL_CARD'; playerId: string }
   | { type: 'SET_READY'; playerId: string }
   | { type: 'PLACE_CARD'; playerId: string; cardIndex: number }
+  | { type: 'RETURN_PLACED_CARD'; playerId: string }
+  | { type: 'CONFIRM_PLACEMENT'; playerId: string }
   | { type: 'START_BIDDING'; playerId: string; amount: number }
   | { type: 'RAISE_BID'; playerId: string; amount: number }
   | { type: 'PASS_BID'; playerId: string }

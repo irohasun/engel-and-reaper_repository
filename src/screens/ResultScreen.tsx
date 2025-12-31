@@ -7,10 +7,12 @@ import type { RootStackParamList } from '../../App';
 import { useGame } from '../contexts/GameContext';
 import { Button } from '../components/ui/Button';
 import { Confetti } from '../components/ui/Confetti';
+import { TestAdModal } from '../components/ui/TestAdModal';
 import { Trophy, Home, RotateCcw } from '../components/icons/Icons';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
+import { showInterstitialAd, isExpoGo } from '../utils/admob';
 
 type ResultScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Result'>;
@@ -21,6 +23,7 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
   const { state } = useGame();
   const { winnerId } = route.params;
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showTestAd, setShowTestAd] = useState(false);
   
   // 勝者情報を取得
   const winner = state.players.find((p) => p.id === winnerId);
@@ -44,6 +47,29 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
     }, 300);
     return () => clearTimeout(timer);
   }, []);
+
+  // 「Play Again」ボタンが押されたときの処理
+  // Expo Goの場合はテスト広告を表示、それ以外は実際の広告を表示
+  // 広告が閉じられたらTestSetup画面に遷移
+  const handlePlayAgain = () => {
+    if (isExpoGo) {
+      // Expo Goの場合はテスト広告モーダルを表示
+      setShowTestAd(true);
+    } else {
+      // 開発ビルド/本番ビルドの場合は実際の広告を表示
+      showInterstitialAd(() => {
+        // 広告が閉じられたらTestSetup画面に遷移
+        navigation.navigate('TestSetup');
+      });
+    }
+  };
+
+  // テスト広告が閉じられたときの処理
+  const handleTestAdClose = () => {
+    setShowTestAd(false);
+    // テスト広告が閉じられたらTestSetup画面に遷移
+    navigation.navigate('TestSetup');
+  };
 
   return (
     <LinearGradient
@@ -73,7 +99,7 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
             <Button
               variant="gold"
               size="lg"
-              onPress={() => navigation.navigate('TestSetup')}
+              onPress={handlePlayAgain}
               style={styles.button}
             >
               <View style={styles.buttonContent}>
@@ -96,6 +122,9 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
           </View>
         </View>
       </SafeAreaView>
+
+      {/* テスト広告モーダル（Expo Goの場合のみ表示） */}
+      <TestAdModal visible={showTestAd} onClose={handleTestAdClose} />
     </LinearGradient>
   );
 }

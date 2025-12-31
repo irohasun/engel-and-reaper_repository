@@ -70,29 +70,6 @@ export function BidModal({
     setAmount(newAmount.toString());
   };
 
-  const quickBids = [];
-  if (mode === 'raise' && currentBid) {
-    // レイズモード: 現在の入札から+1, +2, +3, 最大値
-    const options = [
-      currentBid + 1,
-      currentBid + 2,
-      currentBid + 3,
-      maxAmount,
-    ].filter((val) => val <= maxAmount && val > currentBid);
-    quickBids.push(...[...new Set(options)]);
-  } else {
-    // 入札開始モード: maxAmountが3以下の場合は1からmaxAmountまで、4以上の場合は1, 2, 3, maxAmount
-    if (maxAmount <= 3) {
-      // 小さい値の場合は連続した数値のみ
-      for (let i = minAmount; i <= maxAmount; i++) {
-        quickBids.push(i);
-      }
-    } else {
-      // 大きい値の場合は1, 2, 3, maxAmount
-      const options = [1, 2, 3, maxAmount].filter((val) => val >= minAmount && val <= maxAmount);
-      quickBids.push(...[...new Set(options)]);
-    }
-  }
 
   const isValid =
     !isNaN(parseInt(amount, 10)) &&
@@ -162,35 +139,6 @@ export function BidModal({
             <Text style={styles.controlButtonText}>+</Text>
           </Pressable>
         </View>
-
-        {/* レイズモードの時のみクイック選択を表示 */}
-        {mode === 'raise' && (
-          <View style={styles.quickBidsContainer}>
-            <Text style={styles.quickBidsLabel}>Quick select:</Text>
-            <View style={styles.quickBids}>
-              {quickBids.map((bid) => (
-                <Pressable
-                  key={bid}
-                  onPress={() => setAmount(bid.toString())}
-                  style={({ pressed }) => [
-                    styles.quickBidButton,
-                    pressed && styles.quickBidButtonPressed,
-                    amount === bid.toString() && styles.quickBidButtonActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.quickBidText,
-                      amount === bid.toString() && styles.quickBidTextActive,
-                    ]}
-                  >
-                    {bid}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
 
         <View style={styles.actions}>
           <Button
@@ -273,44 +221,6 @@ const styles = StyleSheet.create({
   },
   inputInvalid: {
     borderColor: colors.player.red,
-  },
-  quickBidsContainer: {
-    marginTop: spacing.sm,
-  },
-  quickBidsLabel: {
-    fontSize: fontSizes.sm,
-    color: colors.tavern.cream,
-    opacity: 0.8,
-    marginBottom: spacing.xs,
-  },
-  quickBids: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    justifyContent: 'center',
-  },
-  quickBidButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.tavern.wood,
-    borderWidth: 1,
-    borderColor: `${colors.tavern.gold}4D`,
-  },
-  quickBidButtonPressed: {
-    opacity: 0.7,
-  },
-  quickBidButtonActive: {
-    backgroundColor: colors.tavern.gold,
-    borderColor: colors.tavern.gold,
-  },
-  quickBidText: {
-    fontSize: fontSizes.base,
-    color: colors.tavern.cream,
-    fontWeight: '600',
-  },
-  quickBidTextActive: {
-    color: colors.tavern.bg,
   },
   actions: {
     flexDirection: 'row',

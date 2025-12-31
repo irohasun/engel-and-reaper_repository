@@ -34,7 +34,8 @@ const PLAYMAT_SIZES = {
 };
 
 // リーチ状態（1勝時）の色
-const reachColors: Record<ThemeColor, string[]> = {
+// LinearGradientのcolorsプロパティは少なくとも2つの要素を持つタプル型を要求するため、[string, string]型で定義
+const reachColors: Record<ThemeColor, [string, string]> = {
   blue: [colors.player.blue, colors.playerDark.blue],
   red: [colors.player.red, colors.playerDark.red],
   yellow: [colors.player.yellow, colors.playerDark.yellow],
@@ -56,7 +57,10 @@ export function PlayMat({
 }: PlayMatProps) {
   const dimensions = PLAYMAT_SIZES[size];
   const isReach = wins >= 1;
-  const matColors = isReach ? reachColors[themeColor] : [colors.tavern.bg, colors.tavern.wood];
+  // LinearGradientのcolorsプロパティに渡すため、タプル型として明示的に定義
+  const matColors: [string, string] = isReach 
+    ? reachColors[themeColor] 
+    : [colors.tavern.bg, colors.tavern.wood];
 
   // パルスアニメーション用の値
   const pulseValue = useSharedValue(1);

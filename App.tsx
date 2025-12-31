@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -7,6 +7,7 @@ import { HomePage } from './src/screens/HomePage';
 import { TestModeSetup } from './src/screens/TestModeSetup';
 import { GameScreen } from './src/screens/GameScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
+import { initializeAdMob } from './src/utils/admob';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -18,6 +19,11 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  // AdMobを初期化
+  useEffect(() => {
+    initializeAdMob();
+  }, []);
+
   return (
     <GameProvider>
       <NavigationContainer>

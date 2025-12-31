@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../App';
+import type { RootStackParamList } from '../../App';
 import { useTestMode } from '../contexts/GameContext';
 import { PlayMat } from '../components/game/PlayMat';
 import { HandArea } from '../components/game/HandArea';
@@ -71,6 +71,14 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const isCurrentPlayerTurn =
     state.turnPlayerId === currentViewPlayerId &&
     (state.phase === 'placement' || state.phase === 'bidding');
+  
+  // このターンでカードを追加したかどうかを判定
+  // 現在のスタック枚数がターン開始時より多ければ、カードを追加済み
+  const turnStartStackCount = currentViewPlayerId 
+    ? (state.turnStartStackCounts[currentViewPlayerId] || 0)
+    : 0;
+  const hasPlacedCardThisTurn = currentPlayer.stack.length > turnStartStackCount;
+  
   const isResolutionPhase = state.phase === 'resolution';
   const isResolutionPlayer =
     isResolutionPhase && state.revealingPlayerId === currentViewPlayerId;
@@ -90,17 +98,19 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const myUnrevealedCards = currentPlayer.stack.filter((c) => !c.isRevealed);
   const mustRevealOwnFirst = isResolutionPlayer && myUnrevealedCards.length > 0;
 
-  // ペナルティカード選択可能なカード（他人の死神で失敗した場合は最高入札者のカード）
-  // 他人の死神で失敗した場合、カードは裏向きで表示される（仕様書より）
+  // 他人の死神で失敗した場合かどうか
+  const isOtherPlayerReaper = state.reaperOwnerId !== state.highestBidderId;
+  
+  // ペナルティカード選択可能なカード
+  // 他人の死神で失敗した場合、カードは裏向きで表示される
+  // 自分の死神で失敗した場合、カードは全て表向きで表示される（何を捨てるか分かるように）
   const penaltyCards = isPenaltyPlayer && penaltyTargetPlayer
     ? [...penaltyTargetPlayer.hand, ...penaltyTargetPlayer.stack].map(card => ({
         ...card,
-        isRevealed: false, // 他人の死神で失敗した場合は裏向きで表示
+        // 自分の死神で失敗した場合は全て表向き、他人の死神で失敗した場合は裏向き
+        isRevealed: !isOtherPlayerReaper, // 自分の死神 = true（表向き）、他人の死神 = false（裏向き）
       }))
     : [];
-  
-  // 他人の死神で失敗した場合かどうか
-  const isOtherPlayerReaper = state.reaperOwnerId !== state.highestBidderId;
 
   const handlePlaceInitialCard = () => {
     if (selectedCardIndex === null) return;
@@ -124,15 +134,42 @@ export function GameScreen({ navigation }: GameScreenProps) {
     dispatch({ type: 'RETURN_INITIAL_CARD', playerId: currentViewPlayerId! });
   };
 
-  const handlePlaceCard = () => {
-    if (selectedCardIndex === null) return;
-    if (!canPlaceCard(state, currentViewPlayerId!)) return;
-    dispatch({
-      type: 'PLACE_CARD',
-      playerId: currentViewPlayerId!,
-      cardIndex: selectedCardIndex,
-    });
-    setSelectedCardIndex(null);
+  // placementフェーズでカードを配置した後に、最後に配置したカードを手札に戻す
+  const handleReturnPlacedCard = () => {
+    if (state.phase !== 'placement') return;
+    if (state.turnPlayerId !== currentViewPlayerId) return;
+    // このターンでカードを追加していない場合は何もしない
+    const startCount = state.turnStartStackCounts[currentViewPlayerId!] || 0;
+    if (currentPlayer.stack.length <= startCount) return;
+    dispatch({ type: 'RETURN_PLACED_CARD', playerId: currentViewPlayerId! });
+  };
+
+  // placementフェーズでカードを配置した後に、配置を確定して次のプレイヤーに移る
+  const handleConfirmPlacement = () => {
+    if (state.phase !== 'placement') return;
+    if (state.turnPlayerId !== currentViewPlayerId) return;
+    // このターンでカードを追加していない場合は何もしない
+    const startCount = state.turnStartStackCounts[currentViewPlayerId!] || 0;
+    if (currentPlayer.stack.length <= startCount) return;
+    dispatch({ type: 'CONFIRM_PLACEMENT', playerId: currentViewPlayerId! });
+  };
+
+  // カード選択処理：既に選択されているカードを再度タップしたらプレイマットに提出
+  const handleSelectCard = (index: number) => {
+    if (selectedCardIndex === index) {
+      // 既に選択されているカードを再度タップした場合、プレイマットに提出
+      if (canPlaceCard(state, currentViewPlayerId!)) {
+        dispatch({
+          type: 'PLACE_CARD',
+          playerId: currentViewPlayerId!,
+          cardIndex: index,
+        });
+        setSelectedCardIndex(null);
+      }
+    } else {
+      // 新しいカードを選択
+      setSelectedCardIndex(index);
+    }
   };
 
   const handleStartBidding = () => {
@@ -179,17 +216,23 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   const handleSelectPenaltyCard = (cardIndex: number) => {
     // カード選択状態を更新（視覚的フィードバック用）
-    setSelectedPenaltyCardIndex(cardIndex);
-    
-    // 少し待ってから除外処理を実行（選択状態を視覚的に確認できるように）
-    setTimeout(() => {
-      dispatch({
-        type: 'SELECT_PENALTY_CARD',
-        cardIndex,
-      });
-      setPenaltyModalVisible(false);
+    // 同じカードを再度タップしたら選択解除
+    if (selectedPenaltyCardIndex === cardIndex) {
       setSelectedPenaltyCardIndex(null);
-    }, 300);
+    } else {
+      setSelectedPenaltyCardIndex(cardIndex);
+    }
+  };
+
+  const handleConfirmPenaltyCard = () => {
+    if (selectedPenaltyCardIndex === null) return;
+    
+    dispatch({
+      type: 'SELECT_PENALTY_CARD',
+      cardIndex: selectedPenaltyCardIndex,
+    });
+    setPenaltyModalVisible(false);
+    setSelectedPenaltyCardIndex(null);
   };
 
   const handleAdvancePhase = () => {
@@ -272,29 +315,19 @@ export function GameScreen({ navigation }: GameScreenProps) {
               isTurn={isCurrentPlayerTurn || isResolutionPlayer}
               isSelectable={
                 (state.phase === 'round_setup' && currentPlayer.stack.length > 0) ||
-                (isResolutionPlayer && !mustRevealOwnFirst && state.cardsToReveal > 0)
+                (state.phase === 'placement' && isCurrentPlayerTurn && hasPlacedCardThisTurn) ||
+                (isResolutionPlayer && state.cardsToReveal > 0)
               }
               onSelect={
                 state.phase === 'round_setup' && currentPlayer.stack.length > 0
                   ? handleReturnInitialCard
-                  : isResolutionPlayer && !mustRevealOwnFirst
+                  : state.phase === 'placement' && isCurrentPlayerTurn && hasPlacedCardThisTurn
+                  ? handleReturnPlacedCard
+                  : isResolutionPlayer && state.cardsToReveal > 0
                   ? () => handleRevealCard(currentViewPlayerId!)
                   : undefined
               }
             />
-            {isResolutionPhase && state.cardsToReveal > 0 && (
-              <View style={styles.revealInfo}>
-                <Text style={styles.revealText}>
-                  Reveal {state.cardsToReveal} more card
-                  {state.cardsToReveal > 1 ? 's' : ''}
-                </Text>
-                {mustRevealOwnFirst && (
-                  <Text style={styles.revealHint}>
-                    Reveal your cards first
-                  </Text>
-                )}
-              </View>
-            )}
             
             {/* めくられたカードの表示 */}
             {isResolutionPhase && state.revealedCards.length > 0 && (
@@ -326,21 +359,13 @@ export function GameScreen({ navigation }: GameScreenProps) {
             {state.phase === 'round_setup' && (
               <View style={styles.handButtonArea}>
                 <Text style={styles.actionLabel}>
-                  Select a card to place on your playmat:
+                  Select a card to place on your playmat
                 </Text>
-                {selectedCardIndex !== null && (
+                {currentPlayer.stack.length > 0 && (
                   <Button
-                    variant="gold"
-                    onPress={handlePlaceInitialCard}
-                    style={styles.actionButton}
-                  >
-                    Place Card
-                  </Button>
-                )}
-                {currentPlayer.stack.length > 0 && !currentPlayer.isReady && (
-                  <Button
-                    variant="wood"
-                    onPress={handleSetReady}
+                    variant={currentPlayer.isReady ? "wood" : "gold"}
+                    onPress={currentPlayer.isReady ? undefined : handleSetReady}
+                    disabled={currentPlayer.isReady}
                     style={styles.actionButton}
                   >
                     Ready
@@ -351,16 +376,21 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
             {state.phase === 'placement' && isCurrentPlayerTurn && (
               <>
-                {selectedCardIndex !== null && currentPlayer.hand.length > 0 && (
-                  <Button
-                    variant="gold"
-                    onPress={handlePlaceCard}
-                    style={styles.actionButton}
-                  >
-                    Add Card
-                  </Button>
+                {hasPlacedCardThisTurn && (
+                  <View style={styles.handButtonArea}>
+                    <Text style={styles.actionLabel}>
+                      Tap the playmat to undo, or press Ready to confirm
+                    </Text>
+                    <Button
+                      variant="gold"
+                      onPress={handleConfirmPlacement}
+                      style={styles.actionButton}
+                    >
+                      Ready
+                    </Button>
+                  </View>
                 )}
-                {currentPlayer.stack.length > 0 && (
+                {!hasPlacedCardThisTurn && (
                   <Button
                     variant="wood"
                     onPress={handleStartBidding}
@@ -416,15 +446,6 @@ export function GameScreen({ navigation }: GameScreenProps) {
                     </Text>
                   )}
                 </View>
-                {mustRevealOwnFirst && currentPlayer.stack.some((c) => !c.isRevealed) && (
-                  <Button
-                    variant="gold"
-                    onPress={() => handleRevealCard(currentViewPlayerId!)}
-                    style={styles.actionButton}
-                  >
-                    Reveal Your Card
-                  </Button>
-                )}
               </>
             )}
 
@@ -476,7 +497,20 @@ export function GameScreen({ navigation }: GameScreenProps) {
                 cards={currentPlayer.hand}
                 themeColor={currentPlayer.themeColor}
                 selectedIndex={selectedCardIndex}
-                onSelectCard={setSelectedCardIndex}
+                onSelectCard={
+                  state.phase === 'round_setup'
+                    ? (index) => {
+                        // round_setupフェーズでは、既に選択されているカードを再度タップしたら配置
+                        if (selectedCardIndex === index) {
+                          handlePlaceInitialCard();
+                        } else {
+                          setSelectedCardIndex(index);
+                        }
+                      }
+                    : isCurrentPlayerTurn
+                    ? handleSelectCard
+                    : () => {}
+                }
                 disabled={
                   // round_setupフェーズでは常に選択可能
                   state.phase === 'round_setup' 
@@ -498,6 +532,14 @@ export function GameScreen({ navigation }: GameScreenProps) {
               ))}
             </ScrollView>
           </View>
+          
+          {/* 選択解除用の透明なオーバーレイ */}
+          {selectedCardIndex !== null && (state.phase === 'placement' || state.phase === 'round_setup') && (
+            <Pressable
+              style={styles.deselectOverlay}
+              onPress={() => setSelectedCardIndex(null)}
+            />
+          )}
         </ScrollView>
 
         {/* 入札モーダル */}
@@ -544,13 +586,21 @@ export function GameScreen({ navigation }: GameScreenProps) {
                     card={card}
                     themeColor={penaltyTargetPlayer?.themeColor || currentPlayer.themeColor}
                     size="md"
-                    isRevealed={false} // 他人の死神で失敗した場合は常に裏向き
-                    isSelected={selectedPenaltyCardIndex === index}
+                    isRevealed={card.isRevealed} // 自分の死神で失敗した場合は表向き、他人の死神で失敗した場合は裏向き
+                    isSelected={false} // 黄色枠は使用しない
                     isDisabled={false}
                   />
                 </Pressable>
               ))}
             </View>
+            <Button
+              variant="gold"
+              onPress={handleConfirmPenaltyCard}
+              disabled={selectedPenaltyCardIndex === null}
+              style={styles.penaltyConfirmButton}
+            >
+              Confirm
+            </Button>
           </View>
         </Modal>
 
@@ -631,21 +681,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 300,
-  },
-  revealInfo: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  revealText: {
-    fontSize: fontSizes.base,
-    color: colors.tavern.gold,
-    fontWeight: '600',
-  },
-  revealHint: {
-    fontSize: fontSizes.sm,
-    color: colors.tavern.cream,
-    opacity: 0.8,
+    zIndex: 10,
   },
   revealedCardsArea: {
     marginTop: spacing.md,
@@ -728,6 +764,7 @@ const styles = StyleSheet.create({
     height: 200,
     marginTop: spacing.xs, // ボタンと手札の距離を近づけるため、marginTopを減らす
     marginBottom: spacing.md,
+    zIndex: 10,
   },
   handButtonArea: {
     gap: spacing.md,
@@ -780,15 +817,21 @@ const styles = StyleSheet.create({
   },
   penaltyCardItemSelected: {
     transform: [{ scale: 1.15 }],
-    borderWidth: 3,
-    borderColor: colors.tavern.gold,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xs,
+  },
+  penaltyConfirmButton: {
+    marginTop: spacing.md,
+    alignSelf: 'center',
+    minWidth: 150,
   },
   errorText: {
     fontSize: fontSizes.lg,
     color: colors.tavern.cream,
     textAlign: 'center',
     marginTop: spacing.xl,
+  },
+  deselectOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 5,
   },
 });

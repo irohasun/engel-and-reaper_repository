@@ -84,7 +84,6 @@ export function HandArea({
                 card={card}
                 themeColor={themeColor}
                 isRevealed={true}
-                isSelected={index === selectedIndex}
                 isDisabled={disabled}
                 size="md"
                 onPress={() => !disabled && onSelectCard(index)}
