@@ -46,6 +46,7 @@ export interface LogEntry {
   id: string;
   type: LogType;
   playerId: string;
+  playerIndex?: number; // オンラインモードで使用
   amount?: number;
   timestamp: Date;
 }

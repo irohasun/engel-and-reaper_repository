@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,22 @@ import {
   SafeAreaView,
   ScrollView,
   Pressable,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../../App';
 import { useTestMode } from '../contexts/GameContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useOnlineGame } from '../hooks/useOnlineGame';
 import { PlayMat } from '../components/game/PlayMat';
 import { HandArea } from '../components/game/HandArea';
 import { OtherPlayersInfo } from '../components/game/OtherPlayersInfo';
 import { PhaseTransitionModal } from '../components/ui/PhaseTransitionModal';
+import { ResolutionResultModal, ResolutionType } from '../components/ui/ResolutionResultModal';
 import { PlayerSelector } from '../components/ui/PlayerSelector';
 import { BidModal } from '../components/ui/BidModal';
 import { Button } from '../components/ui/Button';
@@ -22,43 +29,279 @@ import { Modal } from '../components/ui/Modal';
 import { NextPlayerSelectorModal } from '../components/ui/NextPlayerSelectorModal';
 import { Card } from '../components/cards/Card';
 import { getPhaseDisplayName, getTotalStackCount, getLogMessage, canPlaceCard, canStartBidding } from '../utils/gameLogic';
+import type { GameAction } from '../types/game';
+import { getRoomById } from '../services/firestore';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
 
 type GameScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Game'>;
+  route: RouteProp<RootStackParamList, 'Game'>;
 };
 
-export function GameScreen({ navigation }: GameScreenProps) {
-  // useTestMode()から正しい変数名で取得
-  const { state, dispatch, currentViewPlayerId, currentPlayer, switchPlayer } = useTestMode();
+export function GameScreen({ navigation, route }: GameScreenProps) {
+  const { mode, roomId } = route.params;
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  
+  // モード判定
+  const isOnlineMode = mode === 'online';
+  
+  // テストモード用の状態
+  const testModeHook = useTestMode();
+  
+  // オンラインモード用の状態（useOnlineGameフックを使用）
+  const onlineHook = useOnlineGame({ 
+    roomId: roomId || '' 
+  });
+  
+  // モードに応じて状態を切り替え
+  const state = isOnlineMode ? onlineHook.gameState : testModeHook.state;
+  const currentViewPlayerId = isOnlineMode ? user?.userId : testModeHook.currentViewPlayerId;
+  const isLoading = isOnlineMode ? onlineHook.loading : false;
+  const onlineError = isOnlineMode ? onlineHook.error : null;
+  
+  // テストモード用のdispatch
+  const { dispatch: testDispatch, currentPlayer: testCurrentPlayer, switchPlayer } = testModeHook;
+  
+  // オンラインモード用のdispatchAction
+  const { dispatchAction: onlineDispatchAction } = onlineHook;
+  
+  // ========================================
+  // 全てのuseState（条件分岐の前に配置）
+  // ========================================
+  const [actionLoading, setActionLoading] = useState(false);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [bidModalVisible, setBidModalVisible] = useState(false);
   const [bidModalMode, setBidModalMode] = useState<'start' | 'raise'>('start');
   const [penaltyModalVisible, setPenaltyModalVisible] = useState(false);
   const [selectedPenaltyCardIndex, setSelectedPenaltyCardIndex] = useState<number | null>(null);
   const [phaseTransitionVisible, setPhaseTransitionVisible] = useState(false);
-  const [previousPhase, setPreviousPhase] = useState(state.phase);
-
+  const [previousPhase, setPreviousPhase] = useState(state?.phase);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [resolutionResult, setResolutionResult] = useState<{
+    type: ResolutionType;
+    playerName: string;
+    targetName?: string;
+  } | null>(null);
+  const lastProcessedLogIdRef = useRef<string | null>(null);
+  
+  // オンラインモードの場合、roomCodeを取得
+  useEffect(() => {
+    if (isOnlineMode && roomId && !roomCode) {
+      getRoomById(roomId).then((room) => {
+        if (room) {
+          setRoomCode(room.roomCode);
+        }
+      }).catch((error) => {
+        console.error('ルーム情報取得エラー:', error);
+      });
+    }
+  }, [isOnlineMode, roomId, roomCode]);
+  
+  // ========================================
+  // 全てのuseCallback（条件分岐の前に配置）
+  // ========================================
+  
+  // 統合されたdispatch関数（テストモードとオンラインモードを切り替え）
+  const dispatch = useCallback(async (action: GameAction) => {
+    if (isOnlineMode) {
+      try {
+        setActionLoading(true);
+        await onlineDispatchAction(action);
+      } catch (error) {
+        console.error('オンラインアクションエラー:', error);
+        Alert.alert('エラー', 'アクションの送信に失敗しました。再試行してください。');
+      } finally {
+        setActionLoading(false);
+      }
+    } else {
+      testDispatch(action);
+    }
+  }, [isOnlineMode, onlineDispatchAction, testDispatch]);
+  
+  // ========================================
+  // 全てのuseEffect（条件分岐の前に配置）
+  // ========================================
+  
   // フェーズ遷移の検知
   useEffect(() => {
-    if (state.phase !== previousPhase) {
+    if (state && state.phase !== previousPhase) {
       setPhaseTransitionVisible(true);
       setPreviousPhase(state.phase);
     }
-  }, [state.phase, previousPhase]);
+  }, [state?.phase, previousPhase]);
+
+  // 判定結果ログの検知
+  useEffect(() => {
+    console.log('[ResolutionResult Debug] Logs:', state?.logs?.length || 0, 'logs available');
+    
+    if (!state?.logs || state.logs.length === 0) {
+      console.log('[ResolutionResult Debug] No logs available');
+      return;
+    }
+
+    // 最新のログを確認
+    const lastLog = state.logs[state.logs.length - 1];
+    
+    console.log('[ResolutionResult Debug] Last log:', {
+      id: lastLog.id,
+      type: lastLog.type,
+      playerIndex: lastLog.playerIndex,
+      alreadyProcessed: lastLog.id === lastProcessedLogIdRef.current,
+    });
+    
+    // 既に処理済みのログならスキップ
+    if (lastLog.id === lastProcessedLogIdRef.current) return;
+    
+    if (lastLog.type === 'resolution_success' || lastLog.type === 'resolution_fail') {
+      console.log('[ResolutionResult Debug] Showing resolution result modal');
+      lastProcessedLogIdRef.current = lastLog.id;
+      
+      // プレイヤー名の取得
+      // ログには playerIndex が含まれているはず
+      // メッセージフォーマット:
+      // success: "プレイヤーXが判定成功しました！" (playerIndexはbidder)
+      // fail: "プレイヤーXが判定失敗しました" (playerIndexはbidder)
+      
+      // ただし、testModeHook の場合はログの形式が少し違う可能性があるので注意
+      // オンラインの場合は playerIndex を使用
+      // テストモードの場合はログのメッセージから推測するか、別途ロジックが必要だが
+      // 今回はオンラインモード優先で実装
+      
+      let playerIndex = -1;
+      
+      // lastLog.playerIndex が number であることを確認
+      if (typeof lastLog.playerIndex === 'number') {
+        playerIndex = lastLog.playerIndex;
+      }
+      
+      const player = state.players[playerIndex];
+      const playerName = player?.name || 'Unknown Player';
+      
+      if (lastLog.type === 'resolution_success') {
+        setResolutionResult({
+          type: 'success',
+          playerName,
+        });
+      } else {
+        // 失敗の場合、誰の死神だったかを取得
+        // state.reaperOwnerId が設定されているはず
+        const targetPlayerId = state.reaperOwnerId;
+        const targetPlayer = state.players.find(p => p.id === targetPlayerId);
+        const targetName = targetPlayer?.name || 'Unknown';
+        
+        setResolutionResult({
+          type: 'fail',
+          playerName,
+          targetName,
+        });
+      }
+    }
+  }, [state?.logs, state?.players, state?.reaperOwnerId]);
 
   // ゲーム終了時の処理
   useEffect(() => {
-    if (state.phase === 'game_over' && state.winnerId) {
+    if (state && state.phase === 'game_over' && state.winnerId) {
+      // 勝者情報を取得
+      const winner = state.players.find(p => p.id === state.winnerId);
+      const winnerName = winner?.name || 'Unknown';
+      const winnerColor = winner?.themeColor || 'blue';
+      
       // 少し待ってから結果画面へ
       const timer = setTimeout(() => {
-        navigation.navigate('Result', { winnerId: state.winnerId! });
+        navigation.navigate('Result', { 
+          winnerId: state.winnerId!,
+          winnerName,
+          winnerColor,
+          roomId: isOnlineMode ? roomId : undefined,
+          roomCode: isOnlineMode ? roomCode || undefined : undefined,
+          mode: isOnlineMode ? 'online' : 'test',
+        });
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, state.winnerId, navigation]);
+  }, [state?.phase, state?.winnerId, state?.players, navigation]);
+  
+  // ========================================
+  // 派生状態の計算
+  // ========================================
+  
+  // オンラインモード用のcurrentPlayer取得
+  const currentPlayer = isOnlineMode 
+    ? (state?.players.find(p => p.id === currentViewPlayerId) || null)
+    : testCurrentPlayer;
+  
+  // ========================================
+  // 早期リターン（全てのフックの後に配置）
+  // ========================================
+  
+  // ローディング中
+  if (isLoading) {
+    return (
+      <LinearGradient
+        colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.tavern.gold} />
+            <Text style={styles.loadingText}>ゲームを読み込み中...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+  
+  // オンラインモードでエラーが発生した場合
+  if (isOnlineMode && onlineError) {
+    return (
+      <LinearGradient
+        colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.errorText}>接続エラーが発生しました</Text>
+            <Text style={styles.infoText}>{onlineError.message}</Text>
+            <Button
+              variant="gold"
+              size="lg"
+              onPress={() => navigation.navigate('Home')}
+              style={{ marginTop: spacing.lg }}
+            >
+              <Text style={styles.buttonText}>ホームに戻る</Text>
+            </Button>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+  
+  // stateがnullの場合（エラー状態）
+  if (!state) {
+    return (
+      <LinearGradient
+        colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.errorText}>ゲーム状態を読み込めませんでした</Text>
+            <Button
+              variant="gold"
+              size="lg"
+              onPress={() => navigation.navigate('Home')}
+              style={{ marginTop: spacing.lg }}
+            >
+              <Text style={styles.buttonText}>ホームに戻る</Text>
+            </Button>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   if (!currentPlayer) {
     return (
@@ -74,9 +317,38 @@ export function GameScreen({ navigation }: GameScreenProps) {
   
   // このターンでカードを追加したかどうかを判定
   // 現在のスタック枚数がターン開始時より多ければ、カードを追加済み
-  const turnStartStackCount = currentViewPlayerId 
-    ? (state.turnStartStackCounts[currentViewPlayerId] || 0)
-    : 0;
+  const turnStartStackCount = (() => {
+    if (!currentViewPlayerId) return currentPlayer.stack.length;
+    
+    const recorded = state.turnStartStackCounts?.[currentViewPlayerId];
+    
+    // デバッグログ
+    if (isOnlineMode && state.phase === 'placement' && state.turnPlayerId === currentViewPlayerId) {
+      console.log('[hasPlacedCardThisTurn] Debug:', {
+        currentStackLength: currentPlayer.stack.length,
+        recordedTurnStartCount: recorded,
+        turnStartStackCounts: state.turnStartStackCounts,
+        currentPlayerId: currentViewPlayerId,
+      });
+    }
+    
+    // recordedが未定義の場合、現在のスタック数を使用（カードを追加していないと判定）
+    if (recorded === undefined) {
+      return currentPlayer.stack.length;
+    }
+    
+    // recordedが現在のスタック数より大きい場合（異常）、現在のスタック数を使用
+    if (recorded > currentPlayer.stack.length) {
+      console.warn('[hasPlacedCardThisTurn] Recorded value is greater than current stack length', {
+        recorded,
+        currentStackLength: currentPlayer.stack.length,
+      });
+      return currentPlayer.stack.length;
+    }
+    
+    return recorded;
+  })();
+  
   const hasPlacedCardThisTurn = currentPlayer.stack.length > turnStartStackCount;
   
   const isResolutionPhase = state.phase === 'resolution';
@@ -112,10 +384,12 @@ export function GameScreen({ navigation }: GameScreenProps) {
       }))
     : [];
 
-  const handlePlaceInitialCard = () => {
+  const handlePlaceInitialCard = async () => {
     if (selectedCardIndex === null) return;
     if (state.phase !== 'round_setup') return;
-    dispatch({
+    if (actionLoading) return;
+    
+    await dispatch({
       type: 'PLACE_INITIAL_CARD',
       playerId: currentViewPlayerId!,
       cardIndex: selectedCardIndex,
@@ -123,43 +397,53 @@ export function GameScreen({ navigation }: GameScreenProps) {
     setSelectedCardIndex(null);
   };
 
-  const handleSetReady = () => {
+  const handleSetReady = async () => {
     if (currentPlayer.stack.length === 0) return;
-    dispatch({ type: 'SET_READY', playerId: currentViewPlayerId! });
+    if (actionLoading) return;
+    
+    await dispatch({ type: 'SET_READY', playerId: currentViewPlayerId! });
   };
 
-  const handleReturnInitialCard = () => {
+  const handleReturnInitialCard = async () => {
     if (state.phase !== 'round_setup') return;
     if (currentPlayer.stack.length === 0) return;
-    dispatch({ type: 'RETURN_INITIAL_CARD', playerId: currentViewPlayerId! });
+    if (actionLoading) return;
+    
+    await dispatch({ type: 'RETURN_INITIAL_CARD', playerId: currentViewPlayerId! });
   };
 
   // placementフェーズでカードを配置した後に、最後に配置したカードを手札に戻す
-  const handleReturnPlacedCard = () => {
+  const handleReturnPlacedCard = async () => {
     if (state.phase !== 'placement') return;
     if (state.turnPlayerId !== currentViewPlayerId) return;
+    if (actionLoading) return;
+    
     // このターンでカードを追加していない場合は何もしない
-    const startCount = state.turnStartStackCounts[currentViewPlayerId!] || 0;
+    const startCount = state.turnStartStackCounts?.[currentViewPlayerId!] ?? 0;
     if (currentPlayer.stack.length <= startCount) return;
-    dispatch({ type: 'RETURN_PLACED_CARD', playerId: currentViewPlayerId! });
+    await dispatch({ type: 'RETURN_PLACED_CARD', playerId: currentViewPlayerId! });
   };
 
   // placementフェーズでカードを配置した後に、配置を確定して次のプレイヤーに移る
-  const handleConfirmPlacement = () => {
+  const handleConfirmPlacement = async () => {
     if (state.phase !== 'placement') return;
     if (state.turnPlayerId !== currentViewPlayerId) return;
+    if (actionLoading) return;
+    
     // このターンでカードを追加していない場合は何もしない
-    const startCount = state.turnStartStackCounts[currentViewPlayerId!] || 0;
+    const startCount = state.turnStartStackCounts?.[currentViewPlayerId!] ?? 0;
     if (currentPlayer.stack.length <= startCount) return;
-    dispatch({ type: 'CONFIRM_PLACEMENT', playerId: currentViewPlayerId! });
+    await dispatch({ type: 'CONFIRM_PLACEMENT', playerId: currentViewPlayerId! });
   };
 
   // カード選択処理：既に選択されているカードを再度タップしたらプレイマットに提出
-  const handleSelectCard = (index: number) => {
+  const handleSelectCard = async (index: number) => {
+    if (actionLoading) return;
+    
     if (selectedCardIndex === index) {
       // 既に選択されているカードを再度タップした場合、プレイマットに提出
       if (canPlaceCard(state, currentViewPlayerId!)) {
-        dispatch({
+        await dispatch({
           type: 'PLACE_CARD',
           playerId: currentViewPlayerId!,
           cardIndex: index,
@@ -178,15 +462,17 @@ export function GameScreen({ navigation }: GameScreenProps) {
     setBidModalVisible(true);
   };
 
-  const handleBidConfirm = (amount: number) => {
+  const handleBidConfirm = async (amount: number) => {
+    if (actionLoading) return;
+    
     if (bidModalMode === 'start') {
-      dispatch({
+      await dispatch({
         type: 'START_BIDDING',
         playerId: currentViewPlayerId!,
         amount,
       });
     } else {
-      dispatch({
+      await dispatch({
         type: 'RAISE_BID',
         playerId: currentViewPlayerId!,
         amount,
@@ -200,15 +486,17 @@ export function GameScreen({ navigation }: GameScreenProps) {
     setBidModalVisible(true);
   };
 
-  const handlePass = () => {
-    dispatch({ type: 'PASS_BID', playerId: currentViewPlayerId! });
+  const handlePass = async () => {
+    if (actionLoading) return;
+    await dispatch({ type: 'PASS_BID', playerId: currentViewPlayerId! });
   };
 
-  const handleRevealCard = (targetPlayerId: string) => {
+  const handleRevealCard = async (targetPlayerId: string) => {
     if (!isResolutionPlayer) return;
     if (mustRevealOwnFirst && targetPlayerId !== currentViewPlayerId) return;
+    if (actionLoading) return;
 
-    dispatch({
+    await dispatch({
       type: 'REVEAL_CARD',
       targetPlayerId,
     });
@@ -224,10 +512,11 @@ export function GameScreen({ navigation }: GameScreenProps) {
     }
   };
 
-  const handleConfirmPenaltyCard = () => {
+  const handleConfirmPenaltyCard = async () => {
     if (selectedPenaltyCardIndex === null) return;
+    if (actionLoading) return;
     
-    dispatch({
+    await dispatch({
       type: 'SELECT_PENALTY_CARD',
       cardIndex: selectedPenaltyCardIndex,
     });
@@ -235,14 +524,22 @@ export function GameScreen({ navigation }: GameScreenProps) {
     setSelectedPenaltyCardIndex(null);
   };
 
-  const handleAdvancePhase = () => {
+  const handleAdvancePhase = async () => {
     if (state.phase === 'round_end') {
-      dispatch({ type: 'ADVANCE_PHASE' });
+      if (actionLoading) return;
+      // オンラインモードではADVANCE_PHASEを送信しない
+      // Cloud Functions側で自動的に次のフェーズに進む
+      if (isOnlineMode) {
+        // オンラインモードでは何もしない（サーバー側で自動進行）
+        return;
+      }
+      await dispatch({ type: 'ADVANCE_PHASE' });
     }
   };
 
-  const handleSelectNextPlayer = (nextPlayerId: string) => {
-    dispatch({ type: 'SELECT_NEXT_PLAYER', nextPlayerId });
+  const handleSelectNextPlayer = async (nextPlayerId: string) => {
+    if (actionLoading) return;
+    await dispatch({ type: 'SELECT_NEXT_PLAYER', nextPlayerId });
   };
 
   const totalCards = getTotalStackCount(state);
@@ -258,17 +555,26 @@ export function GameScreen({ navigation }: GameScreenProps) {
       <SafeAreaView style={styles.safeArea}>
         {/* ヘッダー */}
         <View style={styles.header}>
-          <PlayerSelector
-            players={state.players}
-            currentPlayerId={currentViewPlayerId}
-            turnPlayerId={state.turnPlayerId}
-            onSelectPlayer={switchPlayer}
-          />
+          {/* テストモードのみプレイヤー切り替え表示 */}
+          {!isOnlineMode ? (
+            <PlayerSelector
+              players={state.players}
+              currentPlayerId={currentViewPlayerId || null}
+              turnPlayerId={state.turnPlayerId}
+              onSelectPlayer={switchPlayer}
+            />
+          ) : (
+            <View style={styles.onlinePlayerInfo}>
+              <Text style={styles.onlinePlayerName}>
+                {currentPlayer?.name || 'You'}
+              </Text>
+            </View>
+          )}
           <View style={styles.headerRight}>
             <Text style={styles.phaseLabel}>
-              {getPhaseDisplayName(state.phase)}
+              {getPhaseDisplayName(state.phase, t)}
             </Text>
-            <Text style={styles.roundLabel}>Round {state.currentRound}</Text>
+            <Text style={styles.roundLabel}>{t.game.round} {state.currentRound}</Text>
           </View>
         </View>
 
@@ -277,8 +583,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
           <View style={styles.turnBanner}>
             <Text style={styles.turnBannerText}>
               {state.turnPlayerId === currentViewPlayerId
-                ? "Your Turn!"
-                : `${state.players.find(p => p.id === state.turnPlayerId)?.name || 'Player'}'s Turn`}
+                ? t.game.yourTurn
+                : t.game.othersTurn.replace('{name}', state.players.find(p => p.id === state.turnPlayerId)?.name || 'Player')}
             </Text>
           </View>
         )}
@@ -291,6 +597,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
           phase={state.phase}
           highestBidderId={state.highestBidderId}
           bidAmount={state.bidAmount}
+          t={t}
+          revealingPlayerId={state.revealingPlayerId}
           onSelectPlayer={
             isResolutionPlayer && !mustRevealOwnFirst
               ? handleRevealCard
@@ -344,7 +652,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
                           size="sm"
                         />
                         <Text style={styles.revealedCardLabel}>
-                          {player?.name || 'Unknown'}
+                          {player?.name || t.common.unknown}
                         </Text>
                       </View>
                     );
@@ -359,7 +667,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
             {state.phase === 'round_setup' && (
               <View style={styles.handButtonArea}>
                 <Text style={styles.actionLabel}>
-                  Select a card to place on your playmat
+                  {t.game.placement.instruction}
                 </Text>
                 {currentPlayer.stack.length > 0 && (
                   <Button
@@ -368,7 +676,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
                     disabled={currentPlayer.isReady}
                     style={styles.actionButton}
                   >
-                    Ready
+                    {t.lobby.ready}
                   </Button>
                 )}
               </View>
@@ -376,29 +684,32 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
             {state.phase === 'placement' && isCurrentPlayerTurn && (
               <>
-                {hasPlacedCardThisTurn && (
-                  <View style={styles.handButtonArea}>
-                    <Text style={styles.actionLabel}>
-                      Tap the playmat to undo, or press Ready to confirm
-                    </Text>
+                <Text style={styles.actionLabel}>
+                  {hasPlacedCardThisTurn
+                    ? t.game.placement.nextInstruction
+                    : t.game.placement.bidInstruction}
+                </Text>
+                <View style={styles.handButtonArea}>
+                  {hasPlacedCardThisTurn ? (
                     <Button
                       variant="gold"
                       onPress={handleConfirmPlacement}
+                      disabled={actionLoading}
                       style={styles.actionButton}
                     >
-                      Ready
+                      {actionLoading ? <ActivityIndicator size="small" color={colors.tavern.bg} /> : t.game.placement.confirmAndNext}
                     </Button>
-                  </View>
-                )}
-                {!hasPlacedCardThisTurn && (
-                  <Button
-                    variant="wood"
-                    onPress={handleStartBidding}
-                    style={styles.actionButton}
-                  >
-                    Start Bidding
-                  </Button>
-                )}
+                  ) : (
+                    <Button
+                      variant="gold"
+                      onPress={handleStartBidding}
+                      disabled={!canStartBidding(state, currentViewPlayerId!) || actionLoading}
+                      style={styles.actionButton}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color={colors.tavern.bg} /> : t.game.placement.startBidding}
+                    </Button>
+                  )}
+                </View>
               </>
             )}
 
@@ -411,7 +722,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
                       onPress={handleRaise}
                       style={styles.actionButton}
                     >
-                      Raise
+                      {t.game.bidding.raise}
                     </Button>
                   <Button
                     variant="wood"
@@ -419,12 +730,12 @@ export function GameScreen({ navigation }: GameScreenProps) {
                     style={styles.actionButton}
                     disabled={state.highestBidderId === currentViewPlayerId}
                   >
-                    Pass
+                    {t.game.bidding.pass}
                   </Button>
                   </>
                 )}
                 {currentPlayer.hasPassed && (
-                  <Text style={styles.passedText}>You passed</Text>
+                  <Text style={styles.passedText}>{t.game.bidding.passed}</Text>
                 )}
               </>
             )}
@@ -433,16 +744,16 @@ export function GameScreen({ navigation }: GameScreenProps) {
               <>
                 <View style={styles.resolutionInfo}>
                   <Text style={styles.resolutionText}>
-                    Reveal {state.cardsToReveal} card{state.cardsToReveal > 1 ? 's' : ''} to verify your bid
+                    {t.game.resolution.revealingInfo.replace('{name}', currentPlayer?.name || '').replace('{amount}', state.bidAmount.toString())}
                   </Text>
                   {mustRevealOwnFirst && (
                     <Text style={styles.resolutionHint}>
-                      You must reveal your own cards first
+                      {t.game.resolution.revealOwnFirst}
                     </Text>
                   )}
                   {!mustRevealOwnFirst && state.cardsToReveal > 0 && (
                     <Text style={styles.resolutionHint}>
-                      Select a player's playmat to reveal a card
+                      {t.game.resolution.remainingToReveal.replace('{count}', state.cardsToReveal.toString())}
                     </Text>
                   )}
                 </View>
@@ -455,8 +766,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
                   <>
                     <Text style={styles.actionLabel}>
                       {state.reaperOwnerId === state.highestBidderId
-                        ? 'Select a card to eliminate:'
-                        : `Select a card from ${state.players.find(p => p.id === state.highestBidderId)?.name || 'opponent'} to eliminate:`}
+                        ? t.game.penalty.instruction
+                        : t.game.penalty.targetInstruction.replace('{name}', state.players.find(p => p.id === state.highestBidderId)?.name || 'opponent')}
                     </Text>
                     {penaltyCards.length > 0 && (
                       <Button
@@ -467,26 +778,34 @@ export function GameScreen({ navigation }: GameScreenProps) {
                         }}
                         style={styles.actionButton}
                       >
-                        Choose Penalty Card
+                        {t.game.penalty.title}
                       </Button>
                     )}
                   </>
                 ) : (
                   <Text style={styles.waitingText}>
-                    Waiting for {state.players.find(p => p.id === penaltySelectorId)?.name || 'player'} to select penalty card...
+                    {t.language === 'ja' ? `${state.players.find(p => p.id === penaltySelectorId)?.name || 'プレイヤー'}が除外カードを選択中です...` : `Waiting for ${state.players.find(p => p.id === penaltySelectorId)?.name || 'player'}...`}
                   </Text>
                 )}
               </>
             )}
 
             {state.phase === 'round_end' && (
-              <Button
-                variant="gold"
-                onPress={handleAdvancePhase}
-                style={styles.actionButton}
-              >
-                Next Round
-              </Button>
+              <>
+                {isOnlineMode ? (
+                  <Text style={styles.waitingText}>
+                    {t.language === 'ja' ? '次のラウンドを準備中...' : 'Preparing next round...'}
+                  </Text>
+                ) : (
+                  <Button
+                    variant="gold"
+                    onPress={handleAdvancePhase}
+                    style={styles.actionButton}
+                  >
+                    Next Round
+                  </Button>
+                )}
+              </>
             )}
           </View>
 
@@ -523,11 +842,11 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
           {/* ログエリア */}
           <View style={styles.logArea}>
-            <Text style={styles.logTitle}>Game Log</Text>
+            <Text style={styles.logTitle}>{t.game.log.title}</Text>
             <ScrollView style={styles.logList}>
               {state.logs.slice(-10).reverse().map((log) => (
                 <Text key={log.id} style={styles.logEntry}>
-                  {getLogMessage(log, state.players)}
+                  {getLogMessage(log, state.players, t)}
                 </Text>
               ))}
             </ScrollView>
@@ -609,6 +928,15 @@ export function GameScreen({ navigation }: GameScreenProps) {
           visible={state.phase === 'next_player_selection'}
           players={state.players}
           onSelectPlayer={handleSelectNextPlayer}
+        />
+
+        {/* 判定結果モーダル */}
+        <ResolutionResultModal
+          visible={!!resolutionResult}
+          type={resolutionResult?.type || null}
+          playerName={resolutionResult?.playerName || ''}
+          targetName={resolutionResult?.targetName}
+          onComplete={() => setResolutionResult(null)}
         />
 
         {/* フェーズ遷移モーダル */}
@@ -829,9 +1157,44 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    fontSize: fontSizes.base,
+    color: colors.tavern.cream,
+  },
+  infoText: {
+    fontSize: fontSizes.base,
+    color: colors.tavern.cream,
+    textAlign: 'center',
+    opacity: 0.8,
+    marginTop: spacing.sm,
+  },
+  buttonText: {
+    fontSize: fontSizes.lg,
+    fontWeight: '600',
+    color: colors.tavern.bg,
+  },
   deselectOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
     zIndex: 5,
+  },
+  onlinePlayerInfo: {
+    backgroundColor: `${colors.tavern.gold}1A`,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.tavern.gold}33`,
+  },
+  onlinePlayerName: {
+    fontSize: fontSizes.base,
+    color: colors.tavern.gold,
+    fontWeight: '600',
   },
 });

@@ -1,0 +1,125 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // ヘルパー関数
+    // ========================================
+    
+    // 認証済みユーザーかどうか
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // 指定したユーザーIDと一致するか
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ルームの参加者かどうか
+    function isRoomMember(roomId) {
+      return isAuthenticated() && 
+             request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerIds;
+    }
+    
+    // ルームのホストかどうか
+    function isRoomHost(roomId) {
+      return isAuthenticated() && 
+             request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomId)).data.hostId;
+    }
+    
+    // ========================================
+    // Users Collection
+    // ========================================
+    
+    match /users/{userId} {
+      // 自分のドキュメントのみ読み書き可能
+      allow read, write: if isUser(userId);
+    }
+    
+    // ========================================
+    // Rooms Collection
+    // ========================================
+    
+    match /rooms/{roomId} {
+      // 誰でも読み取り可能（合言葉入力のため）
+      allow read: if isAuthenticated();
+      
+      // ルーム作成は認証済みユーザーのみ
+      allow create: if isAuthenticated() 
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.playerIds.size() == 1
+        && request.resource.data.playerIds[0] == request.auth.uid;
+      
+      // ホストのみ削除可能
+      allow delete: if isRoomHost(roomId);
+      
+      // 参加者のみ更新可能
+      allow update: if isRoomMember(roomId);
+      
+      // ========================================
+      // RoomPlayers SubCollection
+      // ========================================
+      
+      match /players/{playerId} {
+        // 参加者全員が読み取り可能
+        allow read: if isRoomMember(roomId);
+        
+        // 自分のドキュメントのみ書き込み可能
+        allow write: if isUser(playerId);
+      }
+    }
+    
+    // ========================================
+    // GameStates Collection
+    // ========================================
+    
+    match /gameStates/{roomId} {
+      // 参加者全員が読み取り可能
+      allow read: if isRoomMember(roomId);
+      
+      // 書き込みは Cloud Functions のみ（クライアントから直接変更不可）
+      allow write: if false;
+      
+      // ========================================
+      // GameLogs SubCollection
+      // ========================================
+      
+      match /logs/{logId} {
+        // 参加者全員が読み取り可能
+        allow read: if isRoomMember(roomId);
+        
+        // 書き込みは Cloud Functions のみ
+        allow write: if false;
+      }
+    }
+    
+    // ========================================
+    // GameActions Collection
+    // ========================================
+    
+    match /gameActions/{actionId} {
+      // 参加者のみ読み取り可能
+      allow read: if isAuthenticated() && 
+                     request.auth.uid in get(/databases/$(database)/documents/rooms/$(resource.data.roomId)).data.playerIds;
+      
+      // 参加者のみアクション作成可能
+      allow create: if isAuthenticated()
+        && request.auth.uid == request.resource.data.userId
+        && request.auth.uid in get(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.playerIds;
+      
+      // 更新・削除は禁止
+      allow update, delete: if false;
+    }
+    
+    // ========================================
+    // デフォルトルール
+    // ========================================
+    
+    // その他のドキュメントへのアクセスを拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

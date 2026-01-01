@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../../App';
 import { useGame } from '../contexts/GameContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/Button';
 import { Confetti } from '../components/ui/Confetti';
 import { TestAdModal } from '../components/ui/TestAdModal';
@@ -13,6 +14,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
 import { showInterstitialAd, isExpoGo } from '../utils/admob';
+import { getRoomById } from '../services/firestore';
 
 type ResultScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Result'>;
@@ -21,14 +23,30 @@ type ResultScreenProps = {
 
 export function ResultScreen({ navigation, route }: ResultScreenProps) {
   const { state } = useGame();
-  const { winnerId } = route.params;
+  const { t } = useLanguage();
+  const { winnerId, winnerName: routeWinnerName, winnerColor: routeWinnerColor, roomId, roomCode: routeRoomCode, mode } = route.params;
   const [showConfetti, setShowConfetti] = useState(false);
   const [showTestAd, setShowTestAd] = useState(false);
+  const [roomCode, setRoomCode] = useState<string | null>(routeRoomCode || null);
+  const isOnlineMode = mode === 'online';
   
-  // 勝者情報を取得
+  // 勝者情報を取得（route.paramsから取得できればそれを使用、なければstateから取得）
   const winner = state.players.find((p) => p.id === winnerId);
-  const winnerName = winner?.name || 'Unknown';
-  const winnerColor = winner?.themeColor || 'blue';
+  const winnerName = routeWinnerName || winner?.name || t.common.unknown;
+  const winnerColor = routeWinnerColor || winner?.themeColor || 'blue';
+  
+  // オンラインモードの場合、roomCodeを取得
+  useEffect(() => {
+    if (isOnlineMode && roomId && !roomCode) {
+      getRoomById(roomId).then((room) => {
+        if (room) {
+          setRoomCode(room.roomCode);
+        }
+      }).catch((error) => {
+        console.error('ルーム情報取得エラー:', error);
+      });
+    }
+  }, [isOnlineMode, roomId, roomCode]);
   
   // プレイヤーカラーマップ
   const playerColorMap: Record<string, string> = {
@@ -49,18 +67,32 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
   }, []);
 
   // 「Play Again」ボタンが押されたときの処理
-  // Expo Goの場合はテスト広告を表示、それ以外は実際の広告を表示
-  // 広告が閉じられたらTestSetup画面に遷移
+  // オンラインモードの場合はルームに戻る
+  // テストモードの場合は広告を表示してTestSetup画面に遷移
   const handlePlayAgain = () => {
-    if (isExpoGo) {
-      // Expo Goの場合はテスト広告モーダルを表示
-      setShowTestAd(true);
-    } else {
-      // 開発ビルド/本番ビルドの場合は実際の広告を表示
-      showInterstitialAd(() => {
-        // 広告が閉じられたらTestSetup画面に遷移
-        navigation.navigate('TestSetup');
+    if (isOnlineMode && roomId && roomCode) {
+      // オンラインモードの場合はルームに戻る
+      // ナビゲーションスタックをリセットして、GameScreenやResultScreenをスタックから削除
+      // これにより、前回のゲーム画面が一瞬表示されることを防ぐ
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: 'Home' },
+          { name: 'Lobby', params: { roomId, roomCode } },
+        ],
       });
+    } else {
+      // テストモードの場合は広告を表示
+      if (isExpoGo) {
+        // Expo Goの場合はテスト広告モーダルを表示
+        setShowTestAd(true);
+      } else {
+        // 開発ビルド/本番ビルドの場合は実際の広告を表示
+        showInterstitialAd(() => {
+          // 広告が閉じられたらTestSetup画面に遷移
+          navigation.navigate('TestSetup');
+        });
+      }
     }
   };
 
@@ -90,9 +122,9 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
             >
               <Trophy size={96} color={colors.tavern.gold} />
             </View>
-            <Text style={styles.title}>Victory!</Text>
+            <Text style={styles.title}>{t.result.victoryTitle}</Text>
             <Text style={styles.winnerName}>{winnerName}</Text>
-            <Text style={styles.subtitle}>wins the game!</Text>
+            <Text style={styles.subtitle}>{t.result.winMessage}</Text>
           </View>
 
           <View style={styles.buttons}>
@@ -104,7 +136,7 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
             >
               <View style={styles.buttonContent}>
                 <RotateCcw size={20} color={colors.tavern.bg} />
-                <Text style={styles.buttonText}>Play Again</Text>
+                <Text style={styles.buttonText}>{t.result.playAgain}</Text>
               </View>
             </Button>
 
@@ -116,7 +148,7 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
             >
               <View style={styles.buttonContent}>
                 <Home size={20} color={colors.tavern.cream} />
-                <Text style={[styles.buttonText, styles.buttonTextWhite]}>Home</Text>
+                <Text style={[styles.buttonText, styles.buttonTextWhite]}>{t.common.home}</Text>
               </View>
             </Button>
           </View>

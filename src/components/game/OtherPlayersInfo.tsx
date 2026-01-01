@@ -5,6 +5,7 @@ import { PlayMat } from './PlayMat';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { fontSizes } from '../../theme/fonts';
+import { TranslationType } from '../../i18n/translations';
 
 interface OtherPlayersInfoProps {
   players: Player[];
@@ -13,6 +14,8 @@ interface OtherPlayersInfoProps {
   phase: GamePhase;
   highestBidderId: string | null;
   bidAmount: number;
+  t: TranslationType;
+  revealingPlayerId?: string | null;
   onSelectPlayer?: (playerId: string) => void;
 }
 
@@ -23,6 +26,8 @@ export function OtherPlayersInfo({
   phase,
   highestBidderId,
   bidAmount,
+  t,
+  revealingPlayerId,
   onSelectPlayer,
 }: OtherPlayersInfoProps) {
   const otherPlayers = players.filter((p) => p.id !== currentPlayerId && p.isAlive);
@@ -30,25 +35,22 @@ export function OtherPlayersInfo({
   const getPlayerStatus = (player: Player): string | null => {
     if (phase === 'bidding') {
       if (player.hasPassed) {
-        return 'Passed';
+        return t.game.bidding.pass;
       }
       if (player.id === highestBidderId) {
         return `${bidAmount} cards`;
       }
       if (player.id === turnPlayerId) {
-        return 'Your turn';
+        return t.language === 'ja' ? '手番' : 'Turn';
       }
     }
     if (phase === 'placement' && player.id === turnPlayerId) {
-      return 'Your turn';
+      return t.language === 'ja' ? '手番' : 'Turn';
     }
     return null;
   };
 
-  if (otherPlayers.length === 0) {
-    return null;
-  }
-
+  // ... rest of the component
   return (
     <ScrollView
       horizontal
@@ -61,13 +63,20 @@ export function OtherPlayersInfo({
         const isTurnPlayer = player.id === turnPlayerId;
         const isSelectable = phase === 'resolution' && onSelectPlayer;
         const isPassed = player.hasPassed && phase === 'bidding';
+        
+        // 判定フェーズで、自分が判定プレイヤーの場合、カードが残っているプレイヤーを強調表示
+        const isHighlighted = isTurnPlayer || (
+          phase === 'resolution' && 
+          revealingPlayerId === currentPlayerId && 
+          player.stack.some(c => !c.isRevealed)
+        );
 
         return (
           <View
             key={player.id}
             style={[
               styles.playerContainer,
-              isTurnPlayer && styles.playerContainerTurn,
+              isHighlighted && styles.playerContainerTurn,
               isPassed && styles.playerContainerPassed,
             ]}
           >
@@ -78,14 +87,14 @@ export function OtherPlayersInfo({
                 wins={player.wins}
                 playerName={player.name}
                 size="sm"
-                isTurn={isTurnPlayer}
+                isTurn={isHighlighted}
                 isSelectable={isSelectable}
                 onSelect={isSelectable ? () => onSelectPlayer?.(player.id) : undefined}
               />
             </View>
             {isPassed && (
               <View style={styles.passedStamp}>
-                <Text style={styles.passedStampText}>PASSED</Text>
+                <Text style={styles.passedStampText}>{t.game.bidding.pass.toUpperCase()}</Text>
               </View>
             )}
             {status && (
@@ -97,7 +106,7 @@ export function OtherPlayersInfo({
             )}
             <View style={styles.infoRow}>
               <Text style={[styles.handCount, isPassed && styles.handCountPassed]}>
-                Hand: {player.hand.length}
+                {t.language === 'ja' ? '手札' : 'Hand'}: {player.hand.length}
               </Text>
             </View>
           </View>

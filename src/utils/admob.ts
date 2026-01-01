@@ -3,8 +3,10 @@
  * Google AdMobの初期化と広告表示を管理します
  * 
  * 注意: Expo Goでは動作しません。開発ビルド（EAS Build）が必要です。
+ * Web環境でもサポートされていません。
  */
 
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // 広告ユニットID（本番環境）
@@ -13,14 +15,17 @@ const AD_UNIT_ID = 'ca-app-pub-8691757518674753/1700384382';
 // Expo Goかどうかを判定（開発ビルドではfalse）
 export const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
+// Web環境かどうかを判定
+const isWeb = Platform.OS === 'web';
+
 // 広告インスタンス（シングルトン）
 let interstitialAd: any = null;
 let mobileAds: any = null;
 let InterstitialAd: any = null;
 let AdEventType: any = null;
 
-// Expo Goでない場合のみ、AdMobモジュールを動的にインポート
-if (!isExpoGo) {
+// Expo GoでもWeb環境でもない場合のみ、AdMobモジュールを動的にインポート
+if (!isExpoGo && !isWeb) {
   try {
     // @ts-ignore - 動的インポートのため型チェックをスキップ
     const admobModule = require('react-native-google-mobile-ads');
@@ -35,12 +40,17 @@ if (!isExpoGo) {
 /**
  * AdMobを初期化します
  * アプリ起動時に一度だけ呼び出してください
- * Expo Goでは何も行いません
+ * Expo GoやWeb環境では何も行いません
  */
 export async function initializeAdMob(): Promise<void> {
-  // Expo Goの場合は初期化をスキップ
+  // Expo GoまたはWeb環境の場合は初期化をスキップ
   if (isExpoGo) {
     console.log('AdMob: Skipping initialization (Expo Go)');
+    return;
+  }
+  
+  if (isWeb) {
+    console.log('AdMob: Skipping initialization (Web)');
     return;
   }
 
@@ -70,7 +80,7 @@ export async function initializeAdMob(): Promise<void> {
  * インタースティシャル広告を読み込みます
  */
 function loadInterstitialAd(): void {
-  if (isExpoGo || !InterstitialAd || !AdEventType) {
+  if (isExpoGo || isWeb || !InterstitialAd || !AdEventType) {
     return;
   }
 
@@ -109,12 +119,12 @@ function loadInterstitialAd(): void {
  * @param onAdClosed 広告が閉じられたときに呼ばれるコールバック
  * @returns 広告が表示されたかどうか（読み込み済みの場合true）
  * 
- * 注意: Expo Goでは広告を表示せず、即座にコールバックを実行します
+ * 注意: Expo GoやWeb環境では広告を表示せず、即座にコールバックを実行します
  */
 export function showInterstitialAd(onAdClosed?: () => void): boolean {
-  // Expo Goの場合は、広告を表示せずに即座にコールバックを実行
-  if (isExpoGo) {
-    console.log('AdMob: Skipping ad display (Expo Go)');
+  // Expo GoまたはWeb環境の場合は、広告を表示せずに即座にコールバックを実行
+  if (isExpoGo || isWeb) {
+    console.log(`AdMob: Skipping ad display (${isWeb ? 'Web' : 'Expo Go'})`);
     if (onAdClosed) {
       onAdClosed();
     }
@@ -159,10 +169,10 @@ export function showInterstitialAd(onAdClosed?: () => void): boolean {
 
 /**
  * 広告が読み込み済みかどうかを確認します
- * Expo Goでは常にfalseを返します
+ * Expo GoやWeb環境では常にfalseを返します
  */
 export function isAdLoaded(): boolean {
-  if (isExpoGo || !interstitialAd) {
+  if (isExpoGo || isWeb || !interstitialAd) {
     return false;
   }
   return interstitialAd.loaded ?? false;

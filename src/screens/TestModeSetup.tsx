@@ -6,6 +6,7 @@ import type { RootStackParamList } from '../../App';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, Play } from '../components/icons/Icons';
 import { useTestMode } from '../contexts/GameContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { DEFAULT_PLAYER_NAMES, THEME_COLORS, type ThemeColor } from '../types/game';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
@@ -16,13 +17,14 @@ type TestModeSetupProps = {
 };
 
 export function TestModeSetup({ navigation }: TestModeSetupProps) {
+  const { t } = useLanguage();
   const [playerCount, setPlayerCount] = useState(3);
   const [names, setNames] = useState<string[]>(DEFAULT_PLAYER_NAMES.slice(0, 6));
   const { initializeTestGame } = useTestMode();
 
   const handleStart = () => {
     initializeTestGame(playerCount, names.slice(0, playerCount));
-    navigation.navigate('Game');
+    navigation.navigate('Game', { mode: 'test' });
   };
 
   const colorBgs: Record<ThemeColor, string> = {
@@ -47,7 +49,7 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
           >
             <ArrowLeft size={24} color={colors.tavern.gold} />
           </Pressable>
-          <Text style={styles.headerTitle}>Test Mode Setup</Text>
+          <Text style={styles.headerTitle}>{t.home.testMode}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -55,7 +57,7 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Users size={20} color={colors.tavern.gold} />
-              <Text style={styles.sectionTitle}>Number of Players</Text>
+              <Text style={styles.sectionTitle}>{t.lobby.players}</Text>
             </View>
 
             <View style={styles.playerCountContainer}>
@@ -82,7 +84,7 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Player Names</Text>
+            <Text style={styles.sectionTitle}>{t.roomCreate.nickname}</Text>
 
             {Array.from({ length: playerCount }).map((_, index) => (
               <View key={index} style={styles.playerRow}>
@@ -99,7 +101,7 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
                     newNames[index] = text;
                     setNames(newNames);
                   }}
-                  placeholder={`Player ${index + 1}`}
+                  placeholder={`${t.common.player} ${index + 1}`}
                   placeholderTextColor={`${colors.tavern.cream}4D`}
                   style={styles.input}
                 />
@@ -108,11 +110,11 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How to Play</Text>
-            <Text style={styles.infoText}>• Each player has 3 Angel cards and 1 Reaper card</Text>
-            <Text style={styles.infoText}>• Place cards face-down and bid on total Angels</Text>
-            <Text style={styles.infoText}>• Reveal cards to verify - hitting a Reaper means failure</Text>
-            <Text style={styles.infoText}>• Win by: 2 successful bids OR being the last one standing</Text>
+            <Text style={styles.sectionTitle}>{t.roomCreate.rulesTitle}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule1}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule2}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule3}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule4}</Text>
           </View>
         </ScrollView>
 
@@ -125,7 +127,7 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
           >
             <View style={styles.buttonContent}>
               <Play size={20} color={colors.tavern.bg} />
-              <Text style={styles.startButtonText}>Start Game</Text>
+              <Text style={styles.startButtonText}>{t.lobby.startGame}</Text>
             </View>
           </Button>
         </View>

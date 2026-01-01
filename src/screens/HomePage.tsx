@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { Button } from '../components/ui/Button';
 import { Anchor, Users, Compass, Sparkles } from '../components/icons/Icons';
+import { useLanguage } from '../contexts/LanguageContext';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
@@ -14,6 +15,8 @@ type HomePageProps = {
 };
 
 export function HomePage({ navigation }: HomePageProps) {
+  const { language, t, setLanguage } = useLanguage();
+
   return (
     <LinearGradient
       colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
@@ -28,33 +31,76 @@ export function HomePage({ navigation }: HomePageProps) {
                 <Sparkles size={32} color={colors.tavern.goldLight} />
               </View>
             </View>
-            <Text style={styles.title}>Angel & Reaper</Text>
+            <Text style={styles.title}>{t.home.title}</Text>
             <Text style={styles.subtitle}>A Tavern Bluff Game</Text>
+          </View>
+
+          {/* 言語選択ラジオボタン */}
+          <View style={styles.languageContainer}>
+            <Pressable
+              onPress={() => setLanguage('ja')}
+              style={[
+                styles.languageButton,
+                language === 'ja' && styles.languageButtonActive,
+              ]}
+            >
+              <Text style={styles.flagIcon}>🇯🇵</Text>
+              <Text style={[
+                styles.languageText,
+                language === 'ja' && styles.languageTextActive
+              ]}>日本語</Text>
+              <View style={[
+                styles.radioButton,
+                language === 'ja' && styles.radioButtonActive
+              ]}>
+                {language === 'ja' && <View style={styles.radioButtonInner} />}
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setLanguage('en')}
+              style={[
+                styles.languageButton,
+                language === 'en' && styles.languageButtonActive,
+              ]}
+            >
+              <Text style={styles.flagIcon}>🇺🇸</Text>
+              <Text style={[
+                styles.languageText,
+                language === 'en' && styles.languageTextActive
+              ]}>English</Text>
+              <View style={[
+                styles.radioButton,
+                language === 'en' && styles.radioButtonActive
+              ]}>
+                {language === 'en' && <View style={styles.radioButtonInner} />}
+              </View>
+            </Pressable>
           </View>
 
           <View style={styles.buttonsContainer}>
             <Button
               variant="gold"
               size="lg"
-              onPress={() => {}}
+              onPress={() => navigation.navigate('RoomCreate')}
               style={styles.button}
             >
               <View style={styles.buttonContent}>
                 <Compass size={20} color={colors.tavern.bg} />
-                <Text style={styles.buttonText}>Create Room</Text>
+                <Text style={styles.buttonText}>{t.home.createRoom}</Text>
               </View>
             </Button>
 
             <Button
               variant="wood"
               size="lg"
-              onPress={() => {}}
+              onPress={() => navigation.navigate('RoomJoin')}
               style={styles.button}
             >
               <View style={styles.buttonContent}>
                 <Users size={20} color={colors.tavern.cream} />
                 <Text style={[styles.buttonText, styles.buttonTextWhite]}>
-                  Join Room
+                  {t.home.joinRoom}
                 </Text>
               </View>
             </Button>
@@ -72,7 +118,7 @@ export function HomePage({ navigation }: HomePageProps) {
               style={styles.button}
             >
               <Text style={[styles.buttonText, styles.buttonTextWhite]}>
-                Test Mode
+                {t.home.testMode}
               </Text>
             </Button>
           </View>
@@ -100,7 +146,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginTop: spacing['3xl'],
+    marginTop: spacing['xl'],
   },
   iconContainer: {
     position: 'relative',
@@ -122,6 +168,58 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.base,
     color: `${colors.tavern.cream}B3`,
     textAlign: 'center',
+  },
+  languageContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginVertical: spacing.lg,
+    backgroundColor: `${colors.tavern.wood}33`,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.tavern.gold}1A`,
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  languageButtonActive: {
+    backgroundColor: `${colors.tavern.gold}1A`,
+  },
+  flagIcon: {
+    fontSize: fontSizes.xl,
+  },
+  languageText: {
+    color: `${colors.tavern.cream}80`,
+    fontSize: fontSizes.sm,
+    fontWeight: '600',
+  },
+  languageTextActive: {
+    color: colors.tavern.gold,
+  },
+  radioButton: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: `${colors.tavern.gold}4D`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: spacing.xs,
+  },
+  radioButtonActive: {
+    borderColor: colors.tavern.gold,
+  },
+  radioButtonInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.tavern.gold,
   },
   buttonsContainer: {
     gap: spacing.md,
@@ -146,7 +244,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.md,
+    marginVertical: spacing.sm,
   },
   dividerLine: {
     flex: 1,

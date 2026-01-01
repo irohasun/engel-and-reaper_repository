@@ -1,5 +1,6 @@
 import type { Card, CardType, Player, ThemeColor, GameState, LogEntry, LogType } from '../types/game';
 import { THEME_COLORS, DEFAULT_PLAYER_NAMES } from '../types/game';
+import { TranslationType } from '../i18n/translations';
 
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -188,34 +189,44 @@ export function prepareNextRound(state: GameState): Partial<GameState> {
   };
 }
 
-export function getPhaseDisplayName(phase: GameState['phase']): string {
+export function getPhaseDisplayName(phase: GameState['phase'], t: TranslationType): string {
   const names: Record<GameState['phase'], string> = {
-    round_setup: 'Prepare Your Card',
-    placement: 'Place Cards',
-    bidding: 'Bidding',
-    resolution: 'Reveal Cards',
-    penalty: 'Penalty',
-    next_player_selection: 'Select Next Player',
-    round_end: 'Round End',
-    game_over: 'Game Over',
+    round_setup: t.game.phase.round_setup,
+    placement: t.game.phase.placement,
+    bidding: t.game.phase.bidding,
+    resolution: t.game.phase.resolution,
+    penalty: t.game.phase.penalty,
+    next_player_selection: t.game.phase.next_player_selection,
+    round_end: t.game.phase.round_end,
+    game_over: t.game.phase.game_over,
   };
   return names[phase];
 }
 
-export function getLogMessage(log: LogEntry, players: Player[]): string {
+export function getLogMessage(log: LogEntry, players: Player[], t: TranslationType): string {
   const player = players.find(p => p.id === log.playerId);
   const name = player?.name || 'Unknown';
+  const playerIndex = (log.playerIndex ?? (players.findIndex(p => p.id === log.playerId))) + 1;
+
+  const replacePlaceholders = (template: string, replacements: Record<string, string | number>) => {
+    let result = template;
+    Object.entries(replacements).forEach(([key, value]) => {
+      result = result.replace(`{${key}}`, String(value));
+    });
+    return result;
+  };
 
   const messages: Record<LogType, string> = {
-    place_card: `${name} placed a card`,
-    bid_start: `${name} started bidding at ${log.amount}`,
-    raise: `${name} raised to ${log.amount}`,
-    pass: `${name} passed`,
-    reveal: `${name} revealed a card`,
-    resolution_success: `${name} succeeded!`,
-    resolution_fail: `${name} failed...`,
-    eliminate: `${name} was eliminated`,
-    game_end: `${name} wins the game!`,
+    place_card: replacePlaceholders(t.game.log.place_card, { index: playerIndex }),
+    return_card: replacePlaceholders(t.game.log.return_card, { index: playerIndex }),
+    bid_start: replacePlaceholders(t.game.log.bid_start, { index: playerIndex, amount: log.amount || 0 }),
+    raise: replacePlaceholders(t.game.log.raise, { index: playerIndex, amount: log.amount || 0 }),
+    pass: replacePlaceholders(t.game.log.pass, { index: playerIndex }),
+    reveal: replacePlaceholders(t.game.log.reveal, { index: playerIndex }),
+    resolution_success: replacePlaceholders(t.game.log.success, { index: playerIndex }),
+    resolution_fail: replacePlaceholders(t.game.log.fail, { index: playerIndex }),
+    eliminate: replacePlaceholders(t.game.log.eliminate, { index: playerIndex }),
+    game_end: replacePlaceholders(t.game.log.game_end, { index: playerIndex }),
   };
 
   return messages[log.type];

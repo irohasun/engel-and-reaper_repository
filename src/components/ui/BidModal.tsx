@@ -5,6 +5,7 @@ import { Button } from './Button';
 import { colors, shadows } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { fontSizes } from '../../theme/fonts';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface BidModalProps {
   visible: boolean;
@@ -25,6 +26,7 @@ export function BidModal({
   maxAmount,
   currentBid,
 }: BidModalProps) {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState<string>('');
 
   useEffect(() => {
@@ -81,14 +83,14 @@ export function BidModal({
     <Modal
       visible={visible}
       onClose={onClose}
-      title={mode === 'start' ? 'Start Bidding' : 'Raise Bid'}
+      title={mode === 'start' ? t.game.placement.startBidding : t.game.bidding.raise}
       showCloseButton={true}
     >
       <View style={styles.content}>
         <Text style={styles.label}>
           {mode === 'start'
-            ? 'Enter starting bid amount:'
-            : `Current bid: ${currentBid}. Enter new bid:`}
+            ? (t.language === 'ja' ? '入札する枚数を選択してください:' : 'Enter starting bid amount:')
+            : (t.language === 'ja' ? `現在の宣言: ${currentBid}枚。新しい宣言を入力:` : `Current bid: ${currentBid}. Enter new bid:`)}
         </Text>
         <Text style={styles.hint}>
           Min: {minAmount}, Max: {maxAmount}
@@ -146,7 +148,7 @@ export function BidModal({
             onPress={onClose}
             style={styles.cancelButton}
           >
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button
             variant="gold"
@@ -154,7 +156,7 @@ export function BidModal({
             disabled={!isValid}
             style={styles.confirmButton}
           >
-            Confirm
+            {t.common.confirm}
           </Button>
         </View>
       </View>
@@ -236,4 +238,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

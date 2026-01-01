@@ -1,24 +1,29 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { GamePhase } from '../../types/game';
-import { getPhaseDisplayName } from '../../utils/gameLogic';
 import { colors, shadows } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { fontSizes } from '../../theme/fonts';
+import { Skull, Angel } from '../icons/Icons';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-interface PhaseTransitionModalProps {
-  phase: GamePhase;
+export type ResolutionType = 'success' | 'fail';
+
+export interface ResolutionResultProps {
   visible: boolean;
+  type: ResolutionType | null;
+  playerName: string;
+  targetName?: string; // 失敗時のみ使用（誰の死神だったか）
   onComplete?: () => void;
 }
 
-export function PhaseTransitionModal({
-  phase,
+export function ResolutionResultModal({
   visible,
+  type,
+  playerName,
+  targetName,
   onComplete,
-}: PhaseTransitionModalProps) {
+}: ResolutionResultProps) {
   const { t } = useLanguage();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
@@ -33,12 +38,12 @@ export function PhaseTransitionModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 200, // 短縮
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.8,
-        duration: 200, // 短縮
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -63,10 +68,10 @@ export function PhaseTransitionModal({
         }),
       ]).start();
 
-      // 2秒後に自動的に閉じる
+      // 4秒後に自動的に閉じる（メッセージを読めるように少し長めに）
       timerRef.current = setTimeout(() => {
         handleComplete();
-      }, 2000);
+      }, 4000);
 
       return () => {
         if (timerRef.current) {
@@ -78,11 +83,19 @@ export function PhaseTransitionModal({
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.8);
     }
-  }, [visible, fadeAnim, scaleAnim]); // onComplete を依存配列から除外（ループ防止）
+  }, [visible, fadeAnim, scaleAnim]);
 
-  if (!visible) {
+  if (!visible || !type) {
     return null;
   }
+
+  const isSuccess = type === 'success';
+  const Icon = isSuccess ? Angel : Skull;
+  const iconColor = isSuccess ? colors.tavern.gold : colors.player.red;
+  const title = isSuccess ? t.game.resolution.successTitle : t.game.resolution.failTitle;
+  const gradientColors = isSuccess 
+    ? [`${colors.tavern.wood}E6`, `${colors.tavern.bg}E6`]
+    : [`#3a0a0aE6`, `#1a0505E6`]; // 失敗時は赤っぽい背景
 
   return (
     <Pressable style={styles.overlay} onPress={handleComplete}>
@@ -96,11 +109,27 @@ export function PhaseTransitionModal({
         ]}
       >
         <LinearGradient
-          colors={[`${colors.tavern.wood}E6`, `${colors.tavern.bg}E6`]}
-          style={styles.content}
+          colors={gradientColors}
+          style={[styles.content, !isSuccess && styles.contentFail]}
         >
-          <Text style={styles.label}>Phase Transition</Text>
-          <Text style={styles.phaseName}>{getPhaseDisplayName(phase, t)}</Text>
+          <View style={styles.iconContainer}>
+            <Icon size={64} color={iconColor} />
+          </View>
+          
+          <Text style={[styles.title, !isSuccess && styles.titleFail]}>{title}</Text>
+          
+          <View style={styles.messageContainer}>
+            {isSuccess ? (
+              <Text style={styles.message}>
+                {t.game.resolution.successMessage.replace('{name}', playerName)}
+              </Text>
+            ) : (
+              <Text style={styles.message}>
+                {t.game.resolution.failMessage.replace('{name}', playerName).replace('{target}', targetName || 'someone')}
+              </Text>
+            )}
+          </View>
+          
           <Text style={styles.tapHint}>Tap to dismiss</Text>
         </LinearGradient>
       </Animated.View>
@@ -113,35 +142,64 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.2)', // クリック可能であることを示すために少し暗く
+    zIndex: 1100, // PhaseTransitionModalより上に表示
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   container: {
     ...shadows.gold,
+    width: '80%',
+    maxWidth: 400,
   },
   content: {
     paddingVertical: spacing.xl,
-    paddingHorizontal: spacing['2xl'],
+    paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.xl,
     borderWidth: 3,
     borderColor: colors.tavern.gold,
     alignItems: 'center',
-    minWidth: 200,
   },
-  label: {
-    fontSize: fontSizes.sm,
-    color: colors.tavern.cream,
-    opacity: 0.8,
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
+  contentFail: {
+    borderColor: colors.player.red,
   },
-  phaseName: {
-    fontSize: fontSizes['2xl'],
+  iconContainer: {
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  title: {
+    fontSize: fontSizes['3xl'],
     color: colors.tavern.gold,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  titleFail: {
+    color: colors.player.red,
+  },
+  messageContainer: {
+    marginBottom: spacing.lg,
+  },
+  message: {
+    fontSize: fontSizes.lg,
+    color: colors.tavern.cream,
+    textAlign: 'center',
+    lineHeight: 28,
+  },
+  playerName: {
+    fontWeight: 'bold',
+    color: colors.tavern.gold,
+    fontSize: fontSizes.xl,
+  },
+  targetName: {
+    fontWeight: 'bold',
+    color: colors.player.red,
+    fontSize: fontSizes.xl,
   },
   tapHint: {
     fontSize: fontSizes.xs,
