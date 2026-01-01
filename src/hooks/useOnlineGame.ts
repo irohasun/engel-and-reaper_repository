@@ -24,12 +24,7 @@ import type {
   RevealedCard,
   LogEntry,
 } from '../types/game';
-
-// ========================================
-// 定数
-// ========================================
-
-const THEME_COLORS: ThemeColor[] = ['blue', 'red', 'yellow', 'green', 'purple', 'pink'];
+import { THEME_COLORS } from '../constants/game';
 
 // ========================================
 // 型定義

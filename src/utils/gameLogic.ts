@@ -1,5 +1,5 @@
 import type { Card, CardType, Player, ThemeColor, GameState, LogEntry, LogType } from '../types/game';
-import { THEME_COLORS, DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN } from '../types/game';
+import { THEME_COLORS, DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN } from '../constants/game';
 import { TranslationType } from '../i18n/translations';
 import type { Language } from '../i18n/translations';
 

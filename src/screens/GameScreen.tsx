@@ -784,7 +784,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
                   </>
                 ) : (
                   <Text style={styles.waitingText}>
-                    {language === 'ja' ? `${state.players.find(p => p.id === penaltySelectorId)?.name || 'プレイヤー'}が除外カードを選択中です...` : `Waiting for ${state.players.find(p => p.id === penaltySelectorId)?.name || 'player'}...`}
+                    {t.game.penalty.waitingFor.replace('{name}', state.players.find(p => p.id === penaltySelectorId)?.name || t.common.player)}
                   </Text>
                 )}
               </>
@@ -794,7 +794,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
               <>
                 {isOnlineMode ? (
                   <Text style={styles.waitingText}>
-                    {language === 'ja' ? '次のラウンドを準備中...' : 'Preparing next round...'}
+                    {t.game.phase.preparingNextRound}
                   </Text>
                 ) : (
               <Button

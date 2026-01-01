@@ -80,6 +80,7 @@ export const translations = {
         next_player_selection: '次プレイヤー選択',
         round_end: 'ラウンド終了',
         game_over: 'ゲーム終了',
+        preparingNextRound: '次のラウンドを準備中...',
       },
       phaseTransition: {
         title: 'フェーズ遷移',
@@ -119,6 +120,7 @@ export const translations = {
         title: 'ペナルティ',
         instruction: '除外するカードを1枚選んでください',
         targetInstruction: '{name}のカードを1枚選んで除外してください',
+        waitingFor: '{name}が除外カードを選択中です...',
       },
       log: {
         title: 'ゲームログ',
@@ -220,6 +222,7 @@ export const translations = {
         next_player_selection: 'Select Next',
         round_end: 'Round End',
         game_over: 'Game Over',
+        preparingNextRound: 'Preparing next round...',
       },
       phaseTransition: {
         title: 'Phase Transition',
@@ -259,6 +262,7 @@ export const translations = {
         title: 'Penalty',
         instruction: 'Select a card to eliminate',
         targetInstruction: "Select a card from {name} to eliminate",
+        waitingFor: 'Waiting for {name} to select penalty card...',
       },
       log: {
         title: 'Game Log',
