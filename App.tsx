@@ -45,25 +45,25 @@ export default function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-      <GameProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: '#1a0f0a' },
-            }}
-          >
-            <Stack.Screen name="Home" component={HomePage} />
+    <GameProvider>
+      <NavigationContainer>
+        <StatusBar style="light" />
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#1a0f0a' },
+          }}
+        >
+          <Stack.Screen name="Home" component={HomePage} />
             <Stack.Screen name="RoomCreate" component={RoomCreate} />
             <Stack.Screen name="RoomJoin" component={RoomJoin} />
             <Stack.Screen name="Lobby" component={Lobby} />
-            <Stack.Screen name="TestSetup" component={TestModeSetup} />
-            <Stack.Screen name="Game" component={GameScreen} />
-            <Stack.Screen name="Result" component={ResultScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </GameProvider>
+          <Stack.Screen name="TestSetup" component={TestModeSetup} />
+          <Stack.Screen name="Game" component={GameScreen} />
+          <Stack.Screen name="Result" component={ResultScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GameProvider>
       </AuthProvider>
     </LanguageProvider>
   );

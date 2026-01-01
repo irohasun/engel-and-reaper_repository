@@ -102,4 +102,5 @@ export const PLAYER_COLOR_MAP: Record<ThemeColor, { bg: string; accent: string; 
   pink: { bg: 'bg-player-pink', accent: 'border-pink-400', name: 'Rose' },
 };
 
-export const DEFAULT_PLAYER_NAMES = ['Captain', 'Navigator', 'Quartermaster', 'Gunner', 'Boatswain', 'Cook'];
+export const DEFAULT_PLAYER_NAMES_JA = ['タロウ', 'ジロウ', 'サブロウ', 'シロウ', 'ゴロウ', 'ロクロウ'];
+export const DEFAULT_PLAYER_NAMES_EN = ['Captain', 'Navigator', 'Quartermaster', 'Gunner', 'Boatswain', 'Cook'];

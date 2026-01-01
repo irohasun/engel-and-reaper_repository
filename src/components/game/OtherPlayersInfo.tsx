@@ -41,11 +41,11 @@ export function OtherPlayersInfo({
         return `${bidAmount} cards`;
       }
       if (player.id === turnPlayerId) {
-        return t.language === 'ja' ? '手番' : 'Turn';
+        return t.game.turn;
       }
     }
     if (phase === 'placement' && player.id === turnPlayerId) {
-      return t.language === 'ja' ? '手番' : 'Turn';
+      return t.game.turn;
     }
     return null;
   };
@@ -106,7 +106,7 @@ export function OtherPlayersInfo({
             )}
             <View style={styles.infoRow}>
               <Text style={[styles.handCount, isPassed && styles.handCountPassed]}>
-                {t.language === 'ja' ? '手札' : 'Hand'}: {player.hand.length}
+                {t.game.hand}: {player.hand.length}
               </Text>
             </View>
           </View>

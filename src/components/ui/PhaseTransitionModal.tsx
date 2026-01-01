@@ -99,9 +99,9 @@ export function PhaseTransitionModal({
           colors={[`${colors.tavern.wood}E6`, `${colors.tavern.bg}E6`]}
           style={styles.content}
         >
-          <Text style={styles.label}>Phase Transition</Text>
+          <Text style={styles.label}>{t.game.phaseTransition.title}</Text>
           <Text style={styles.phaseName}>{getPhaseDisplayName(phase, t)}</Text>
-          <Text style={styles.tapHint}>Tap to dismiss</Text>
+          <Text style={styles.tapHint}>{t.game.phaseTransition.tapToDismiss}</Text>
         </LinearGradient>
       </Animated.View>
     </Pressable>

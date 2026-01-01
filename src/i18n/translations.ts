@@ -17,6 +17,11 @@ export const translations = {
       victory: '勝利！',
       draw: '引き分け',
       unknown: '不明',
+      close: '閉じる',
+      selectPlayer: 'プレイヤー選択',
+      eliminated: '脱落',
+      min: '最小',
+      max: '最大',
     },
     home: {
       title: 'Angel & Reaper',
@@ -60,11 +65,13 @@ export const translations = {
       hostLeaveConfirm: 'ホストが退出すると、ルームは削除されるか他のプレイヤーに移譲されます。',
       exit: '退出',
     },
-    game: {
-      round: 'ラウンド',
-      yourTurn: 'あなたの番です！',
-      othersTurn: '{name}の番です',
-      phase: {
+      game: {
+        round: 'ラウンド',
+        yourTurn: 'あなたの番です！',
+        othersTurn: '{name}の番です',
+        turn: '手番',
+        hand: '手札',
+        phase: {
         round_setup: 'ラウンド準備',
         placement: 'カード配置',
         bidding: '入札',
@@ -73,6 +80,10 @@ export const translations = {
         next_player_selection: '次プレイヤー選択',
         round_end: 'ラウンド終了',
         game_over: 'ゲーム終了',
+      },
+      phaseTransition: {
+        title: 'フェーズ遷移',
+        tapToDismiss: 'タップで閉じる',
       },
       placement: {
         label: 'カードを配置',
@@ -91,6 +102,8 @@ export const translations = {
         raise: 'レイズ',
         pass: 'パス',
         passed: 'あなたはパスしました',
+        enterStartingBid: '入札する枚数を選択してください:',
+        enterNewBid: '現在の宣言: {currentBid}枚。新しい宣言を入力:',
       },
       resolution: {
         instruction: '判定中',
@@ -144,6 +157,11 @@ export const translations = {
       victory: 'Victory!',
       draw: 'Draw',
       unknown: 'Unknown',
+      close: 'Close',
+      selectPlayer: 'Select Player',
+      eliminated: 'Eliminated',
+      min: 'Min',
+      max: 'Max',
     },
     home: {
       title: 'Angel & Reaper',
@@ -191,6 +209,8 @@ export const translations = {
       round: 'Round',
       yourTurn: 'Your Turn!',
       othersTurn: "{name}'s Turn",
+      turn: 'Turn',
+      hand: 'Hand',
       phase: {
         round_setup: 'Setup',
         placement: 'Placement',
@@ -200,6 +220,10 @@ export const translations = {
         next_player_selection: 'Select Next',
         round_end: 'Round End',
         game_over: 'Game Over',
+      },
+      phaseTransition: {
+        title: 'Phase Transition',
+        tapToDismiss: 'Tap to dismiss',
       },
       placement: {
         label: 'Place Card',
@@ -218,6 +242,8 @@ export const translations = {
         raise: 'Raise',
         pass: 'Pass',
         passed: 'You passed',
+        enterStartingBid: 'Enter starting bid amount:',
+        enterNewBid: 'Current bid: {currentBid}. Enter new bid:',
       },
       resolution: {
         instruction: 'Resolving',

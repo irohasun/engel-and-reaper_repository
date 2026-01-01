@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -35,48 +35,31 @@ export function HomePage({ navigation }: HomePageProps) {
             <Text style={styles.subtitle}>A Tavern Bluff Game</Text>
           </View>
 
-          {/* 言語選択ラジオボタン */}
-          <View style={styles.languageContainer}>
-            <Pressable
-              onPress={() => setLanguage('ja')}
-              style={[
-                styles.languageButton,
-                language === 'ja' && styles.languageButtonActive,
-              ]}
-            >
-              <Text style={styles.flagIcon}>🇯🇵</Text>
-              <Text style={[
-                styles.languageText,
-                language === 'ja' && styles.languageTextActive
-              ]}>日本語</Text>
-              <View style={[
-                styles.radioButton,
-                language === 'ja' && styles.radioButtonActive
-              ]}>
-                {language === 'ja' && <View style={styles.radioButtonInner} />}
+          {/* 言語切り替えトグルボタン */}
+          <Pressable
+            onPress={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
+            style={styles.languageToggleContainer}
+          >
+            <View style={[
+              styles.languageToggleTrack,
+              language === 'en' && styles.languageToggleTrackActive
+            ]}>
+              <View style={styles.languageToggleLabels}>
+                <Text style={[
+                  styles.languageToggleLabel,
+                  language === 'en' && styles.languageToggleLabelActive
+                ]}>🇺🇸</Text>
+                <Text style={[
+                  styles.languageToggleLabel,
+                  language === 'ja' && styles.languageToggleLabelActive
+                ]}>🇯🇵</Text>
               </View>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setLanguage('en')}
-              style={[
-                styles.languageButton,
-                language === 'en' && styles.languageButtonActive,
-              ]}
-            >
-              <Text style={styles.flagIcon}>🇺🇸</Text>
-              <Text style={[
-                styles.languageText,
-                language === 'en' && styles.languageTextActive
-              ]}>English</Text>
               <View style={[
-                styles.radioButton,
-                language === 'en' && styles.radioButtonActive
-              ]}>
-                {language === 'en' && <View style={styles.radioButtonInner} />}
-              </View>
-            </Pressable>
-          </View>
+                styles.languageToggleThumb,
+                language === 'ja' && styles.languageToggleThumbActive
+              ]} />
+            </View>
+          </Pressable>
 
           <View style={styles.buttonsContainer}>
             <Button
@@ -169,57 +152,68 @@ const styles = StyleSheet.create({
     color: `${colors.tavern.cream}B3`,
     textAlign: 'center',
   },
-  languageContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    marginVertical: spacing.lg,
-    backgroundColor: `${colors.tavern.wood}33`,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: `${colors.tavern.gold}1A`,
+  languageToggleContainer: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: spacing.lg,
+    zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+    }),
   },
-  languageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+  languageToggleTrack: {
+    width: 80,
+    height: 40,
     borderRadius: borderRadius.md,
-  },
-  languageButtonActive: {
-    backgroundColor: `${colors.tavern.gold}1A`,
-  },
-  flagIcon: {
-    fontSize: fontSizes.xl,
-  },
-  languageText: {
-    color: `${colors.tavern.cream}80`,
-    fontSize: fontSizes.sm,
-    fontWeight: '600',
-  },
-  languageTextActive: {
-    color: colors.tavern.gold,
-  },
-  radioButton: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    backgroundColor: `${colors.tavern.wood}80`,
     borderWidth: 2,
     borderColor: `${colors.tavern.gold}4D`,
+    position: 'relative',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.xs,
   },
-  radioButtonActive: {
+  languageToggleTrackActive: {
+    backgroundColor: `${colors.tavern.wood}80`,
+    borderColor: `${colors.tavern.gold}4D`,
+  },
+  languageToggleLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  languageToggleLabel: {
+    fontSize: fontSizes.lg,
+    opacity: 0.6,
+  },
+  languageToggleLabelActive: {
+    opacity: 1,
+  },
+  languageToggleThumb: {
+    position: 'absolute',
+    left: 2,
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
     borderColor: colors.tavern.gold,
   },
-  radioButtonInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.tavern.gold,
+  languageToggleThumbActive: {
+    left: 42, // 80 - 36 - 2 (width - thumbWidth - padding)
   },
   buttonsContainer: {
     gap: spacing.md,

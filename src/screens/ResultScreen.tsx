@@ -83,15 +83,15 @@ export function ResultScreen({ navigation, route }: ResultScreenProps) {
       });
     } else {
       // テストモードの場合は広告を表示
-      if (isExpoGo) {
-        // Expo Goの場合はテスト広告モーダルを表示
-        setShowTestAd(true);
-      } else {
-        // 開発ビルド/本番ビルドの場合は実際の広告を表示
-        showInterstitialAd(() => {
-          // 広告が閉じられたらTestSetup画面に遷移
-          navigation.navigate('TestSetup');
-        });
+    if (isExpoGo) {
+      // Expo Goの場合はテスト広告モーダルを表示
+      setShowTestAd(true);
+    } else {
+      // 開発ビルド/本番ビルドの場合は実際の広告を表示
+      showInterstitialAd(() => {
+        // 広告が閉じられたらTestSetup画面に遷移
+        navigation.navigate('TestSetup');
+      });
       }
     }
   };

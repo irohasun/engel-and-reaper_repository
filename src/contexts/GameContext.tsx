@@ -13,6 +13,7 @@ import {
   createLog,
   generateId,
 } from '../utils/gameLogic';
+import { useLanguage } from './LanguageContext';
 
 interface GameContextType {
   state: GameState;
@@ -563,9 +564,10 @@ export function useGame() {
 
 export function useTestMode() {
   const { state, dispatch, currentViewPlayerId, setCurrentViewPlayerId } = useGame();
+  const { language } = useLanguage();
 
   const initializeTestGame = (playerCount: number, names?: string[]) => {
-    const players = createPlayers(playerCount, names);
+    const players = createPlayers(playerCount, names, language);
     dispatch({ type: 'INITIALIZE_GAME', players });
     setCurrentViewPlayerId(players[0].id);
   };

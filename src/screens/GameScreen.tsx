@@ -43,7 +43,7 @@ type GameScreenProps = {
 export function GameScreen({ navigation, route }: GameScreenProps) {
   const { mode, roomId } = route.params;
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   // モード判定
   const isOnlineMode = mode === 'online';
@@ -124,7 +124,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   // ========================================
   // 全てのuseEffect（条件分岐の前に配置）
   // ========================================
-  
+
   // フェーズ遷移の検知
   useEffect(() => {
     if (state && state.phase !== previousPhase) {
@@ -557,12 +557,12 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
         <View style={styles.header}>
           {/* テストモードのみプレイヤー切り替え表示 */}
           {!isOnlineMode ? (
-            <PlayerSelector
-              players={state.players}
+          <PlayerSelector
+            players={state.players}
               currentPlayerId={currentViewPlayerId || null}
-              turnPlayerId={state.turnPlayerId}
-              onSelectPlayer={switchPlayer}
-            />
+            turnPlayerId={state.turnPlayerId}
+            onSelectPlayer={switchPlayer}
+          />
           ) : (
             <View style={styles.onlinePlayerInfo}>
               <Text style={styles.onlinePlayerName}>
@@ -638,11 +638,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
             />
             
             {/* めくられたカードの表示 */}
-            {isResolutionPhase && state.revealedCards.length > 0 && (
+            {isResolutionPhase && state.revealedCards && state.revealedCards.length > 0 && (
               <View style={styles.revealedCardsArea}>
                 <Text style={styles.revealedCardsTitle}>Revealed Cards:</Text>
                 <View style={styles.revealedCardsList}>
-                  {state.revealedCards.slice(-state.bidAmount).map((revealedCard, index) => {
+                  {(state.revealedCards || []).slice(-state.bidAmount).map((revealedCard, index) => {
                     const player = state.players.find((p) => p.id === revealedCard.playerId);
                     return (
                       <View key={`${revealedCard.card.id}-${index}`} style={styles.revealedCardItem}>
@@ -684,11 +684,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
 
             {state.phase === 'placement' && isCurrentPlayerTurn && (
               <>
-                <Text style={styles.actionLabel}>
+                    <Text style={styles.actionLabel}>
                   {hasPlacedCardThisTurn
                     ? t.game.placement.nextInstruction
                     : t.game.placement.bidInstruction}
-                </Text>
+                    </Text>
                 <View style={styles.handButtonArea}>
                   {hasPlacedCardThisTurn ? (
                     <Button
@@ -700,15 +700,15 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
                       {actionLoading ? <ActivityIndicator size="small" color={colors.tavern.bg} /> : t.game.placement.confirmAndNext}
                     </Button>
                   ) : (
-                    <Button
+                  <Button
                       variant="gold"
-                      onPress={handleStartBidding}
+                    onPress={handleStartBidding}
                       disabled={!canStartBidding(state, currentViewPlayerId!) || actionLoading}
-                      style={styles.actionButton}
-                    >
+                    style={styles.actionButton}
+                  >
                       {actionLoading ? <ActivityIndicator size="small" color={colors.tavern.bg} /> : t.game.placement.startBidding}
-                    </Button>
-                  )}
+                  </Button>
+                )}
                 </View>
               </>
             )}
@@ -784,7 +784,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
                   </>
                 ) : (
                   <Text style={styles.waitingText}>
-                    {t.language === 'ja' ? `${state.players.find(p => p.id === penaltySelectorId)?.name || 'プレイヤー'}が除外カードを選択中です...` : `Waiting for ${state.players.find(p => p.id === penaltySelectorId)?.name || 'player'}...`}
+                    {language === 'ja' ? `${state.players.find(p => p.id === penaltySelectorId)?.name || 'プレイヤー'}が除外カードを選択中です...` : `Waiting for ${state.players.find(p => p.id === penaltySelectorId)?.name || 'player'}...`}
                   </Text>
                 )}
               </>
@@ -794,16 +794,16 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
               <>
                 {isOnlineMode ? (
                   <Text style={styles.waitingText}>
-                    {t.language === 'ja' ? '次のラウンドを準備中...' : 'Preparing next round...'}
+                    {language === 'ja' ? '次のラウンドを準備中...' : 'Preparing next round...'}
                   </Text>
                 ) : (
-                  <Button
-                    variant="gold"
-                    onPress={handleAdvancePhase}
-                    style={styles.actionButton}
-                  >
-                    Next Round
-                  </Button>
+              <Button
+                variant="gold"
+                onPress={handleAdvancePhase}
+                style={styles.actionButton}
+              >
+                Next Round
+              </Button>
                 )}
               </>
             )}
@@ -844,7 +844,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
           <View style={styles.logArea}>
             <Text style={styles.logTitle}>{t.game.log.title}</Text>
             <ScrollView style={styles.logList}>
-              {state.logs.slice(-10).reverse().map((log) => (
+              {(state.logs || []).slice(-10).reverse().map((log) => (
                 <Text key={log.id} style={styles.logEntry}>
                   {getLogMessage(log, state.players, t)}
                 </Text>

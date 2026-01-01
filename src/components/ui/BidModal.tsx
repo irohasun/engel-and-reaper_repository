@@ -89,11 +89,11 @@ export function BidModal({
       <View style={styles.content}>
         <Text style={styles.label}>
           {mode === 'start'
-            ? (t.language === 'ja' ? '入札する枚数を選択してください:' : 'Enter starting bid amount:')
-            : (t.language === 'ja' ? `現在の宣言: ${currentBid}枚。新しい宣言を入力:` : `Current bid: ${currentBid}. Enter new bid:`)}
+            ? t.game.bidding.enterStartingBid
+            : t.game.bidding.enterNewBid.replace('{currentBid}', currentBid?.toString() || '0')}
         </Text>
         <Text style={styles.hint}>
-          Min: {minAmount}, Max: {maxAmount}
+          {t.common.min}: {minAmount}, {t.common.max}: {maxAmount}
         </Text>
 
         <View style={styles.inputContainer}>

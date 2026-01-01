@@ -6,6 +6,7 @@ import { colors, shadows } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { fontSizes } from '../../theme/fonts';
 import { Button } from './Button';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PlayerSelectorProps {
   players: Player[];
@@ -20,10 +21,11 @@ export function PlayerSelector({
   turnPlayerId,
   onSelectPlayer,
 }: PlayerSelectorProps) {
+  const { t } = useLanguage();
   const [modalVisible, setModalVisible] = useState(false);
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
-  const currentPlayerName = currentPlayer?.name || 'Unknown';
+  const currentPlayerName = currentPlayer?.name || t.common.unknown;
 
   const playerColorMap: Record<string, string> = {
     blue: colors.player.blue,
@@ -64,7 +66,7 @@ export function PlayerSelector({
             <Text style={styles.buttonText}>{currentPlayerName}</Text>
             {currentPlayerId === turnPlayerId && (
               <View style={styles.turnBadge}>
-                <Text style={styles.turnBadgeText}>Turn</Text>
+                <Text style={styles.turnBadgeText}>{t.game.turn}</Text>
               </View>
             )}
           </View>
@@ -87,7 +89,7 @@ export function PlayerSelector({
               colors={[colors.tavern.wood, colors.tavern.bg]}
               style={styles.modalGradient}
             >
-              <Text style={styles.modalTitle}>Select Player</Text>
+              <Text style={styles.modalTitle}>{t.common.selectPlayer}</Text>
               <View style={styles.playerList}>
                 {players.map((player) => {
                   const isCurrent = player.id === currentPlayerId;
@@ -123,12 +125,12 @@ export function PlayerSelector({
                           {player.name}
                         </Text>
                         {!isAlive && (
-                          <Text style={styles.playerStatus}>Eliminated</Text>
+                          <Text style={styles.playerStatus}>{t.common.eliminated}</Text>
                         )}
                       </View>
                       {isTurnPlayer && (
                         <View style={styles.turnBadgeSmall}>
-                          <Text style={styles.turnBadgeTextSmall}>Turn</Text>
+                          <Text style={styles.turnBadgeTextSmall}>{t.game.turn}</Text>
                         </View>
                       )}
                       {isCurrent && (
@@ -143,7 +145,7 @@ export function PlayerSelector({
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
               >
-                Close
+                {t.common.close}
               </Button>
             </LinearGradient>
           </View>

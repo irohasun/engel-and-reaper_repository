@@ -1,6 +1,7 @@
 import type { Card, CardType, Player, ThemeColor, GameState, LogEntry, LogType } from '../types/game';
-import { THEME_COLORS, DEFAULT_PLAYER_NAMES } from '../types/game';
+import { THEME_COLORS, DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN } from '../types/game';
 import { TranslationType } from '../i18n/translations';
+import type { Language } from '../i18n/translations';
 
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -23,10 +24,11 @@ export function createInitialHand(): Card[] {
   ].sort(() => Math.random() - 0.5);
 }
 
-export function createPlayer(index: number, name?: string): Player {
+export function createPlayer(index: number, name?: string, language: Language = 'ja'): Player {
+  const defaultNames = language === 'ja' ? DEFAULT_PLAYER_NAMES_JA : DEFAULT_PLAYER_NAMES_EN;
   return {
     id: generateId(),
-    name: name || DEFAULT_PLAYER_NAMES[index] || `Player ${index + 1}`,
+    name: name || defaultNames[index] || `Player ${index + 1}`,
     themeColor: THEME_COLORS[index],
     hand: createInitialHand(),
     stack: [],
@@ -38,9 +40,9 @@ export function createPlayer(index: number, name?: string): Player {
   };
 }
 
-export function createPlayers(count: number, names?: string[]): Player[] {
+export function createPlayers(count: number, names?: string[], language: Language = 'ja'): Player[] {
   return Array.from({ length: count }, (_, i) =>
-    createPlayer(i, names?.[i])
+    createPlayer(i, names?.[i], language)
   );
 }
 
