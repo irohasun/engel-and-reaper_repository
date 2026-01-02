@@ -30,10 +30,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   // Firebase と AdMob を初期化
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:32',message:'App useEffect start',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
-    
     initializeFirebase();
     
     // AdMobはWeb環境ではサポートされていないため、ネイティブプラットフォームのみで初期化
