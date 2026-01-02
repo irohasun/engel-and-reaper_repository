@@ -538,7 +538,12 @@ interface GameProviderProps {
 }
 
 export function GameProvider({ children }: GameProviderProps) {
-  const [state, dispatch] = useReducer(gameReducer, getInitialGameState([]));
+  // #region agent log
+  const initialState = getInitialGameState([]);
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameContext.tsx:541',message:'GameProvider initial state',data:{hasLogs:!!initialState.logs,logsType:typeof initialState.logs,logsIsArray:Array.isArray(initialState.logs),logsLength:initialState.logs?.length,playersLength:initialState.players.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
+  const [state, dispatch] = useReducer(gameReducer, initialState);
   const [currentViewPlayerId, setCurrentViewPlayerId] = useState<string | null>(null);
 
   const setViewPlayer = (id: string) => {
@@ -565,6 +570,10 @@ export function useGame() {
 export function useTestMode() {
   const { state, dispatch, currentViewPlayerId, setCurrentViewPlayerId } = useGame();
   const { language } = useLanguage();
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameContext.tsx:565',message:'useTestMode called',data:{hasState:!!state,hasLogs:!!state?.logs,logsType:typeof state?.logs,logsLength:state?.logs?.length,playersLength:state?.players?.length,phase:state?.phase},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
 
   const initializeTestGame = (playerCount: number, names?: string[]) => {
     const players = createPlayers(playerCount, names, language);

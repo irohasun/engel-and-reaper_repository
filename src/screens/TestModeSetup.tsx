@@ -7,7 +7,8 @@ import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, Play } from '../components/icons/Icons';
 import { useTestMode } from '../contexts/GameContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { DEFAULT_PLAYER_NAMES, THEME_COLORS, type ThemeColor } from '../types/game';
+import { DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN, THEME_COLORS } from '../constants/game';
+import type { ThemeColor } from '../types/game';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
@@ -17,9 +18,10 @@ type TestModeSetupProps = {
 };
 
 export function TestModeSetup({ navigation }: TestModeSetupProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [playerCount, setPlayerCount] = useState(3);
-  const [names, setNames] = useState<string[]>(DEFAULT_PLAYER_NAMES.slice(0, 6));
+  const defaultNames = language === 'ja' ? DEFAULT_PLAYER_NAMES_JA : DEFAULT_PLAYER_NAMES_EN;
+  const [names, setNames] = useState<string[]>(defaultNames.slice(0, 6));
   const { initializeTestGame } = useTestMode();
 
   const handleStart = () => {

@@ -41,6 +41,10 @@ type GameScreenProps = {
 };
 
 export function GameScreen({ navigation, route }: GameScreenProps) {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameScreen.tsx:44',message:'GameScreen render start',data:{mode:route.params.mode,roomId:route.params.roomId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
   const { mode, roomId } = route.params;
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -51,6 +55,10 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   // テストモード用の状態
   const testModeHook = useTestMode();
   
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameScreen.tsx:52',message:'After useTestMode',data:{hasState:!!testModeHook.state,statePhase:testModeHook.state?.phase,stateLogsLength:testModeHook.state?.logs?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
   // オンラインモード用の状態（useOnlineGameフックを使用）
   const onlineHook = useOnlineGame({ 
     roomId: roomId || '' 
@@ -58,28 +66,23 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   
   // モードに応じて状態を切り替え
   const state = isOnlineMode ? onlineHook.gameState : testModeHook.state;
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameScreen.tsx:60',message:'State selected',data:{isOnlineMode,hasState:!!state,statePhase:state?.phase,stateLogsType:typeof state?.logs,stateLogsLength:state?.logs?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  
   const currentViewPlayerId = isOnlineMode ? user?.userId : testModeHook.currentViewPlayerId;
   const isLoading = isOnlineMode ? onlineHook.loading : false;
   const onlineError = isOnlineMode ? onlineHook.error : null;
   
-  // stateがnullの場合の早期リターン（ローディング中）
-  if (!state) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.tavern.gold} />
-        <Text style={styles.loadingText}>{t.common.loading}</Text>
-      </View>
-    );
-  }
-  
-  // テストモード用のdispatch
+  // テストモード用のdispatch（早期リターンの前に取得）
   const { dispatch: testDispatch, currentPlayer: testCurrentPlayer, switchPlayer } = testModeHook;
   
-  // オンラインモード用のdispatchAction
+  // オンラインモード用のdispatchAction（早期リターンの前に取得）
   const { dispatchAction: onlineDispatchAction } = onlineHook;
   
   // ========================================
-  // 全てのuseState（条件分岐の前に配置）
+  // 全てのuseState（早期リターンの前に配置）
   // ========================================
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
@@ -96,6 +99,19 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     targetName?: string;
   } | null>(null);
   const lastProcessedLogIdRef = useRef<string | null>(null);
+  
+  // stateがnullの場合の早期リターン（ローディング中）
+  if (!state) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameScreen.tsx:66',message:'State is null, showing loading',data:{isOnlineMode},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.tavern.gold} />
+        <Text style={styles.loadingText}>{t.common.loading}</Text>
+      </View>
+    );
+  }
   
   // オンラインモードの場合、roomCodeを取得
   useEffect(() => {
@@ -145,6 +161,10 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
 
   // 判定結果ログの検知
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameScreen.tsx:148',message:'useEffect logs check',data:{hasState:!!state,hasLogs:!!state?.logs,logsType:typeof state?.logs,logsLength:state?.logs?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
     const logs = state.logs || [];
     console.log('[ResolutionResult Debug] Logs:', logs.length, 'logs available');
     
@@ -855,11 +875,16 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
           <View style={styles.logArea}>
             <Text style={styles.logTitle}>{t.game.log.title}</Text>
             <ScrollView style={styles.logList}>
-              {(state.logs || []).slice(-10).reverse().map((log) => (
+              {(() => {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameScreen.tsx:878',message:'Rendering logs',data:{hasState:!!state,hasLogs:!!state?.logs,logsType:typeof state?.logs,logsIsArray:Array.isArray(state?.logs),logsLength:state?.logs?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                return (state.logs || []).slice(-10).reverse().map((log) => (
                 <Text key={log.id} style={styles.logEntry}>
-                  {getLogMessage(log, state.players, t)}
+                    {getLogMessage(log, state.players, t)}
                 </Text>
-              ))}
+                ));
+              })()}
             </ScrollView>
           </View>
           
