@@ -62,6 +62,16 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   const isLoading = isOnlineMode ? onlineHook.loading : false;
   const onlineError = isOnlineMode ? onlineHook.error : null;
   
+  // stateがnullの場合の早期リターン（ローディング中）
+  if (!state) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.tavern.gold} />
+        <Text style={styles.loadingText}>{t.common.loading}</Text>
+      </View>
+    );
+  }
+  
   // テストモード用のdispatch
   const { dispatch: testDispatch, currentPlayer: testCurrentPlayer, switchPlayer } = testModeHook;
   
@@ -135,15 +145,16 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
 
   // 判定結果ログの検知
   useEffect(() => {
-    console.log('[ResolutionResult Debug] Logs:', state?.logs?.length || 0, 'logs available');
+    const logs = state.logs || [];
+    console.log('[ResolutionResult Debug] Logs:', logs.length, 'logs available');
     
-    if (!state?.logs || state.logs.length === 0) {
+    if (logs.length === 0) {
       console.log('[ResolutionResult Debug] No logs available');
       return;
     }
 
     // 最新のログを確認
-    const lastLog = state.logs[state.logs.length - 1];
+    const lastLog = logs[logs.length - 1];
     
     console.log('[ResolutionResult Debug] Last log:', {
       id: lastLog.id,
@@ -199,7 +210,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
         });
       }
     }
-  }, [state?.logs, state?.players, state?.reaperOwnerId]);
+  }, [state.logs, state.players, state.reaperOwnerId]);
 
   // ゲーム終了時の処理
   useEffect(() => {
