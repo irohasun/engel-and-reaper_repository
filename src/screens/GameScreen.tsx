@@ -131,13 +131,29 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   // 全てのuseEffect（条件分岐の前に配置）
   // ========================================
 
-  // フェーズ遷移の検知
+  // フェーズ遷移の検知（判定結果モーダル表示中は遅延）
   useEffect(() => {
-    if (state && state.phase !== previousPhase) {
+    if (!state) return;
+    
+    // 判定結果モーダルが表示中の場合は、フェーズ遷移の表示を遅延
+    if (resolutionResult) {
+      // 判定結果モーダルが自動的に4秒後に閉じられるので、それより後に表示
+      const timer = setTimeout(() => {
+        if (state.phase !== previousPhase) {
+          setPhaseTransitionVisible(true);
+          setPreviousPhase(state.phase);
+        }
+      }, 4500); // 4秒（モーダル表示）+ 0.5秒（マージン）
+      
+      return () => clearTimeout(timer);
+    }
+    
+    // 判定結果モーダルが非表示の場合は即座にフェーズ遷移を表示
+    if (state.phase !== previousPhase) {
       setPhaseTransitionVisible(true);
       setPreviousPhase(state.phase);
     }
-  }, [state?.phase, previousPhase]);
+  }, [state?.phase, previousPhase, resolutionResult]);
 
   // 判定結果ログの検知
   useEffect(() => {
