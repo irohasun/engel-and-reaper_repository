@@ -87,16 +87,6 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   } | null>(null);
   const lastProcessedLogIdRef = useRef<string | null>(null);
   
-  // stateがnullの場合の早期リターン（ローディング中）
-  if (!state) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.tavern.gold} />
-        <Text style={styles.loadingText}>{t.common.loading}</Text>
-      </View>
-    );
-  }
-  
   // オンラインモードの場合、roomCodeを取得
   useEffect(() => {
     // 条件チェックはeffect内で行う（フック順序を保つため）
@@ -557,6 +547,23 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   };
 
   const totalCards = getTotalStackCount(state);
+  // stateがnullの場合のローディング表示（フック順序を保つためreturnはここ）
+  if (!state) {
+    return (
+      <LinearGradient
+        colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.tavern.gold} />
+            <Text style={styles.loadingText}>{t.common.loading}</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+
   const minBid = 1;
   const maxBid = totalCards;
   const currentBid = bidModalMode === 'raise' ? state.bidAmount : 0;
