@@ -58,9 +58,6 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   
   // モードに応じて状態を切り替え
   const state = isOnlineMode ? onlineHook.gameState : testModeHook.state;
-  // #region agent log: debug state summary (H1)
-  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'GameScreen.tsx:stateSummary',message:'state summary',data:{isOnlineMode,hasState:!!state,phase:state?.phase,hasLogs:Array.isArray(state?.logs),logsCount:state?.logs?.length ?? null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const currentViewPlayerId = isOnlineMode ? user?.userId : testModeHook.currentViewPlayerId;
   const isLoading = isOnlineMode ? onlineHook.loading : false;
   const onlineError = isOnlineMode ? onlineHook.error : null;
@@ -88,6 +85,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     playerName: string;
     targetName?: string;
   } | null>(null);
+  const resolutionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedLogIdRef = useRef<string | null>(null);
   
   // オンラインモードの場合、roomCodeを取得
@@ -131,24 +129,20 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   // 全てのuseEffect（条件分岐の前に配置）
   // ========================================
 
-  // フェーズ遷移の検知（判定結果モーダル表示中は遅延）
+  // フェーズ遷移の検知（判定モーダル表示中は少し遅らせる）
   useEffect(() => {
     if (!state) return;
-    
-    // 判定結果モーダルが表示中の場合は、フェーズ遷移の表示を遅延
+
     if (resolutionResult) {
-      // 判定結果モーダルが自動的に4秒後に閉じられるので、それより後に表示
       const timer = setTimeout(() => {
         if (state.phase !== previousPhase) {
           setPhaseTransitionVisible(true);
           setPreviousPhase(state.phase);
         }
-      }, 4500); // 4秒（モーダル表示）+ 0.5秒（マージン）
-      
+      }, 800); // 判定結果を少し見せてからフェーズ遷移を表示
       return () => clearTimeout(timer);
     }
-    
-    // 判定結果モーダルが非表示の場合は即座にフェーズ遷移を表示
+
     if (state.phase !== previousPhase) {
       setPhaseTransitionVisible(true);
       setPreviousPhase(state.phase);
@@ -159,6 +153,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   useEffect(() => {
     if (!state) {
       return;
+    }
+
+    if (resolutionTimerRef.current) {
+      clearTimeout(resolutionTimerRef.current);
+      resolutionTimerRef.current = null;
     }
 
     const logs = state.logs || [];
@@ -206,24 +205,25 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
       const player = state.players[playerIndex];
       const playerName = player?.name || 'Unknown Player';
       
-      if (lastLog.type === 'resolution_success') {
-        setResolutionResult({
-          type: 'success',
-          playerName,
-        });
-      } else {
-        // 失敗の場合、誰の死神だったかを取得
-        // state.reaperOwnerId が設定されているはず
-        const targetPlayerId = state.reaperOwnerId;
-        const targetPlayer = state.players.find(p => p.id === targetPlayerId);
-        const targetName = targetPlayer?.name || 'Unknown';
-        
-        setResolutionResult({
-          type: 'fail',
-          playerName,
-          targetName,
-        });
-      }
+      // 最後のカードオープン直後に判定へ進むのを少し待つ
+      resolutionTimerRef.current = setTimeout(() => {
+        if (lastLog.type === 'resolution_success') {
+          setResolutionResult({
+            type: 'success',
+            playerName,
+          });
+        } else {
+          const targetPlayerId = state.reaperOwnerId;
+          const targetPlayer = state.players.find(p => p.id === targetPlayerId);
+          const targetName = targetPlayer?.name || 'Unknown';
+          
+          setResolutionResult({
+            type: 'fail',
+            playerName,
+            targetName,
+          });
+        }
+      }, 700);
     }
   }, [state?.logs, state?.players, state?.reaperOwnerId]);
 
