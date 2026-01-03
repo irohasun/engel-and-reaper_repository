@@ -31,12 +31,25 @@ let functions: Functions;
 
 // 初期化関数
 export const initializeFirebase = () => {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:33',message:'initializeFirebase start',data:{hasConfig:!!firebaseConfig,apiKey:firebaseConfig.apiKey?.substring(0,10),projectId:firebaseConfig.projectId,existingApps:getApps().length,hasExtra:!!Constants.expoConfig?.extra,hasFirebase:!!Constants.expoConfig?.extra?.firebase},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
+  // Firebase設定の検証
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    throw new Error('Firebase configuration is missing. Please check app.json extra.firebase settings.');
+  }
+  
   // 既に初期化されている場合は再利用
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
   } else {
     app = getApps()[0];
   }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:40',message:'After initializeApp',data:{hasApp:!!app,appId:app?.options?.appId,projectId:app?.options?.projectId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
 
   // AsyncStorageを使用した永続化を設定
   try {
@@ -53,7 +66,23 @@ export const initializeFirebase = () => {
   }
 
   firestore = getFirestore(app);
-  functions = getFunctions(app, 'us-central1'); // Cloud Functionsのデプロイ先リージョン
+  
+  try {
+    functions = getFunctions(app, 'us-central1'); // Cloud Functionsのデプロイ先リージョン
+  } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:56',message:'getFunctions error',data:{error:error?.message,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    throw new Error(`Failed to initialize Firebase Functions: ${error?.message || 'Unknown error'}`);
+  }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:62',message:'After getFunctions',data:{hasFunctions:!!functions,functionsType:typeof functions,appId:app?.options?.appId,projectId:app?.options?.projectId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+
+  if (!functions) {
+    throw new Error('Failed to initialize Firebase Functions. Please check your Firebase configuration.');
+  }
 
   return { app, auth, firestore, functions };
 };
@@ -70,13 +99,33 @@ export const getFirebaseFirestore = (): Firestore => {
   if (!firestore) {
     initializeFirebase();
   }
+  
+  if (!firestore) {
+    throw new Error('Failed to initialize Firebase Firestore. Please ensure Firebase is properly configured.');
+  }
+  
   return firestore;
 };
 
 export const getFirebaseFunctions = (): Functions => {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:76',message:'getFirebaseFunctions called',data:{hasFunctions:!!functions,functionsType:typeof functions},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
   if (!functions) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:78',message:'Initializing Firebase',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     initializeFirebase();
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebase.ts:80',message:'After initializeFirebase',data:{hasFunctions:!!functions,functionsType:typeof functions},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
   }
+  
+  if (!functions) {
+    throw new Error('Failed to initialize Firebase Functions. Please ensure Firebase is properly configured.');
+  }
+  
   return functions;
 };
 

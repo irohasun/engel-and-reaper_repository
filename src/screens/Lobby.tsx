@@ -25,7 +25,8 @@ import {
   sendHeartbeat,
 } from '../services/firestore';
 import type { Room, RoomPlayer } from '../types/firebase';
-import { THEME_COLORS } from '../types/game';
+import { THEME_COLORS } from '../constants/game';
+import type { ThemeColor } from '../types/game';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
@@ -261,7 +262,8 @@ export function Lobby({ navigation, route }: LobbyProps) {
 
             <View style={styles.playersList}>
               {players.map((player, index) => {
-                const themeColor = THEME_COLORS[player.colorIndex];
+                const colorIndex = player.colorIndex ?? index % THEME_COLORS.length;
+                const themeColor: ThemeColor = THEME_COLORS[colorIndex] || THEME_COLORS[0];
                 const isCurrentUser = player.userId === user?.userId;
                 
                 return (

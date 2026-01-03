@@ -52,13 +52,47 @@ export const createRoom = async (
   nickname?: string,
   maxPlayers: number = 6
 ): Promise<CreateRoomResponse> => {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:52',message:'createRoom start',data:{nickname,maxPlayers},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
   const functions = getFirebaseFunctions();
-  const createRoomFn = httpsCallable<CreateRoomRequest, CreateRoomResponse>(
-    functions,
-    'createRoom'
-  );
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:56',message:'After getFirebaseFunctions',data:{hasFunctions:!!functions,functionsType:typeof functions},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
+  if (!functions) {
+    throw new Error('Firebase Functions is not initialized. Please ensure Firebase is properly configured.');
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:62',message:'Before httpsCallable',data:{hasFunctions:!!functions,functionsType:typeof functions,functionsApp:functions?.app?.options?.appId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
+  let createRoomFn;
+  try {
+    createRoomFn = httpsCallable<CreateRoomRequest, CreateRoomResponse>(
+      functions,
+      'createRoom'
+    );
+  } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:68',message:'httpsCallable error',data:{error:error?.message,errorStack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    throw new Error(`Failed to create callable function: ${error?.message || 'Unknown error'}`);
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:75',message:'Before createRoomFn call',data:{nickname,maxPlayers},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
   
   const result = await createRoomFn({ nickname, maxPlayers });
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:66',message:'After createRoomFn call',data:{hasResult:!!result,hasData:!!result?.data},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
   return result.data;
 };
 
@@ -128,7 +162,17 @@ export const subscribeToRoom = (
   callback: (room: Room | null) => void
 ): Unsubscribe => {
   const firestore = getFirebaseFirestore();
-  return onSnapshot(doc(firestore, 'rooms', roomId), (snapshot) => {
+  
+  if (!firestore) {
+    throw new Error('Firebase Firestore is not initialized. Please ensure Firebase is properly configured.');
+  }
+  
+  // #region agent log
+  const roomDocRef = doc(firestore, 'rooms', roomId);
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:168',message:'Before onSnapshot',data:{hasFirestore:!!firestore,hasDocRef:!!roomDocRef,roomId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
+  return onSnapshot(roomDocRef, (snapshot) => {
     if (snapshot.exists()) {
       callback(snapshot.data() as Room);
     } else {
@@ -161,8 +205,18 @@ export const subscribeToRoomPlayers = (
   callback: (players: RoomPlayer[]) => void
 ): Unsubscribe => {
   const firestore = getFirebaseFirestore();
+  
+  if (!firestore) {
+    throw new Error('Firebase Firestore is not initialized. Please ensure Firebase is properly configured.');
+  }
+  
+  // #region agent log
+  const playersCollectionRef = collection(firestore, 'rooms', roomId, 'players');
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:185',message:'Before onSnapshot players',data:{hasFirestore:!!firestore,hasCollectionRef:!!playersCollectionRef,roomId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
   return onSnapshot(
-    collection(firestore, 'rooms', roomId, 'players'),
+    playersCollectionRef,
     (snapshot) => {
       const players = snapshot.docs.map(doc => doc.data() as RoomPlayer);
       callback(players);
