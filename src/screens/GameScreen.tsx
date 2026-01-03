@@ -58,6 +58,9 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   
   // モードに応じて状態を切り替え
   const state = isOnlineMode ? onlineHook.gameState : testModeHook.state;
+  // #region agent log: debug state summary (H1)
+  fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'GameScreen.tsx:stateSummary',message:'state summary',data:{isOnlineMode,hasState:!!state,phase:state?.phase,hasLogs:Array.isArray(state?.logs),logsCount:state?.logs?.length ?? null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const currentViewPlayerId = isOnlineMode ? user?.userId : testModeHook.currentViewPlayerId;
   const isLoading = isOnlineMode ? onlineHook.loading : false;
   const onlineError = isOnlineMode ? onlineHook.error : null;
@@ -138,8 +141,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
 
   // 判定結果ログの検知
   useEffect(() => {
+    if (!state) {
+      return;
+    }
+
     const logs = state.logs || [];
-    console.log('[ResolutionResult Debug] Logs:', logs.length, 'logs available');
     
     if (logs.length === 0) {
       console.log('[ResolutionResult Debug] No logs available');
