@@ -99,15 +99,18 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   
   // オンラインモードの場合、roomCodeを取得
   useEffect(() => {
-    if (isOnlineMode && roomId && !roomCode) {
-      getRoomById(roomId).then((room) => {
-        if (room) {
-          setRoomCode(room.roomCode);
-        }
-      }).catch((error) => {
-        console.error('ルーム情報取得エラー:', error);
-      });
+    // 条件チェックはeffect内で行う（フック順序を保つため）
+    if (!isOnlineMode || !roomId || roomCode) {
+      return;
     }
+    
+    getRoomById(roomId).then((room) => {
+      if (room) {
+        setRoomCode(room.roomCode);
+      }
+    }).catch((error) => {
+      console.error('ルーム情報取得エラー:', error);
+    });
   }, [isOnlineMode, roomId, roomCode]);
   
   // ========================================
