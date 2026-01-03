@@ -203,7 +203,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
         });
       }
     }
-  }, [state.logs, state.players, state.reaperOwnerId]);
+  }, [state?.logs, state?.players, state?.reaperOwnerId]);
 
   // ゲーム終了時の処理
   useEffect(() => {
