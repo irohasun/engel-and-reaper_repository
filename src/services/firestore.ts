@@ -39,8 +39,7 @@ import type {
   StartGameResponse,
 } from '../types/firebase';
 
-const firestore = getFirebaseFirestore();
-const functions = getFirebaseFunctions();
+// モジュールレベルでの初期化を削除（関数内で必要に応じて取得）
 
 // ========================================
 // Room 関連
@@ -53,6 +52,7 @@ export const createRoom = async (
   nickname?: string,
   maxPlayers: number = 6
 ): Promise<CreateRoomResponse> => {
+  const functions = getFirebaseFunctions();
   const createRoomFn = httpsCallable<CreateRoomRequest, CreateRoomResponse>(
     functions,
     'createRoom'
@@ -69,6 +69,7 @@ export const joinRoom = async (
   roomCode: string,
   nickname?: string
 ): Promise<JoinRoomResponse> => {
+  const functions = getFirebaseFunctions();
   const joinRoomFn = httpsCallable<JoinRoomRequest, JoinRoomResponse>(
     functions,
     'joinRoom'
@@ -82,6 +83,7 @@ export const joinRoom = async (
  * ルームから退出（Cloud Function経由）
  */
 export const leaveRoom = async (roomId: string): Promise<void> => {
+  const functions = getFirebaseFunctions();
   const leaveRoomFn = httpsCallable<LeaveRoomRequest, void>(
     functions,
     'leaveRoom'
@@ -94,6 +96,7 @@ export const leaveRoom = async (roomId: string): Promise<void> => {
  * ゲームを開始（Cloud Function経由）
  */
 export const startGame = async (roomId: string): Promise<StartGameResponse> => {
+  const functions = getFirebaseFunctions();
   const startGameFn = httpsCallable<StartGameRequest, StartGameResponse>(
     functions,
     'startGame'
@@ -107,6 +110,7 @@ export const startGame = async (roomId: string): Promise<StartGameResponse> => {
  * ルーム情報を取得
  */
 export const getRoomById = async (roomId: string): Promise<Room | null> => {
+  const firestore = getFirebaseFirestore();
   const roomDoc = await getDoc(doc(firestore, 'rooms', roomId));
   
   if (!roomDoc.exists()) {
@@ -123,6 +127,7 @@ export const subscribeToRoom = (
   roomId: string,
   callback: (room: Room | null) => void
 ): Unsubscribe => {
+  const firestore = getFirebaseFirestore();
   return onSnapshot(doc(firestore, 'rooms', roomId), (snapshot) => {
     if (snapshot.exists()) {
       callback(snapshot.data() as Room);
@@ -140,6 +145,7 @@ export const subscribeToRoom = (
  * ルームのプレイヤー一覧を取得
  */
 export const getRoomPlayers = async (roomId: string): Promise<RoomPlayer[]> => {
+  const firestore = getFirebaseFirestore();
   const playersSnapshot = await getDocs(
     collection(firestore, 'rooms', roomId, 'players')
   );
@@ -154,6 +160,7 @@ export const subscribeToRoomPlayers = (
   roomId: string,
   callback: (players: RoomPlayer[]) => void
 ): Unsubscribe => {
+  const firestore = getFirebaseFirestore();
   return onSnapshot(
     collection(firestore, 'rooms', roomId, 'players'),
     (snapshot) => {
@@ -171,6 +178,7 @@ export const updatePlayerReady = async (
   userId: string,
   isReady: boolean
 ): Promise<void> => {
+  const firestore = getFirebaseFirestore();
   await updateDoc(doc(firestore, 'rooms', roomId, 'players', userId), {
     isReady,
   });
@@ -183,6 +191,7 @@ export const sendHeartbeat = async (
   roomId: string,
   userId: string
 ): Promise<void> => {
+  const firestore = getFirebaseFirestore();
   await updateDoc(doc(firestore, 'rooms', roomId, 'players', userId), {
     lastHeartbeatAt: serverTimestamp(),
     isConnected: true,
@@ -197,6 +206,7 @@ export const sendHeartbeat = async (
  * ゲーム状態を取得
  */
 export const getGameState = async (roomId: string): Promise<GameState | null> => {
+  const firestore = getFirebaseFirestore();
   const gameStateDoc = await getDoc(doc(firestore, 'gameStates', roomId));
   
   if (!gameStateDoc.exists()) {
@@ -213,6 +223,7 @@ export const subscribeToGameState = (
   roomId: string,
   callback: (gameState: GameState | null) => void
 ): Unsubscribe => {
+  const firestore = getFirebaseFirestore();
   return onSnapshot(doc(firestore, 'gameStates', roomId), (snapshot) => {
     if (snapshot.exists()) {
       callback(snapshot.data() as GameState);
@@ -229,6 +240,7 @@ export const subscribeToGameLogs = (
   roomId: string,
   callback: (logs: any[]) => void
 ): Unsubscribe => {
+  const firestore = getFirebaseFirestore();
   const q = query(
     collection(firestore, 'gameStates', roomId, 'logs'),
     orderBy('timestamp', 'desc'),
@@ -266,6 +278,7 @@ export const sendGameAction = async <T extends GameActionType>(
   type: T,
   payload: GameActionPayload[T]
 ): Promise<void> => {
+  const firestore = getFirebaseFirestore();
   await setDoc(doc(collection(firestore, 'gameActions')), {
     roomId,
     userId,
@@ -284,6 +297,7 @@ export const sendGameAction = async <T extends GameActionType>(
  * 合言葉でルームを検索
  */
 export const findRoomByCode = async (roomCode: string): Promise<Room | null> => {
+  const firestore = getFirebaseFirestore();
   const q = query(
     collection(firestore, 'rooms'),
     where('roomCode', '==', roomCode.toUpperCase()),
