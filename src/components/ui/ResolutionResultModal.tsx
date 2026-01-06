@@ -130,7 +130,7 @@ export function ResolutionResultModal({
             )}
           </View>
           
-          <Text style={styles.tapHint}>Tap to dismiss</Text>
+          <Text style={styles.tapHint}>{t.game.resolution.tapToDismiss}</Text>
         </LinearGradient>
       </Animated.View>
     </Pressable>

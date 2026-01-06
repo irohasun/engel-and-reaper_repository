@@ -52,7 +52,7 @@ export function HomePage({ navigation }: HomePageProps) {
                 <Text style={[
                   styles.languageToggleLabel,
                   language === 'ja' && styles.languageToggleLabelActive
-                ]}>🇯🇵</Text>
+                ]}>   🇯🇵</Text>
               </View>
               <View style={[
                 styles.languageToggleThumb,

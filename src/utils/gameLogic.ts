@@ -1,5 +1,5 @@
 import type { Card, CardType, Player, ThemeColor, GameState, LogEntry, LogType } from '../types/game';
-import { THEME_COLORS, DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN } from '../constants/game';
+import { THEME_COLORS, DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN } from '../types/game';
 import { TranslationType } from '../i18n/translations';
 import type { Language } from '../i18n/translations';
 
@@ -110,9 +110,22 @@ export function canPlaceCard(state: GameState, playerId: string): boolean {
   if (state.phase !== 'round_setup' && state.phase !== 'placement') return false;
   const player = getPlayerById(state, playerId);
   if (!player || !player.isAlive) return false;
-  if (state.phase === 'round_setup') return player.hand.length > 0;
+  if (state.phase === 'round_setup') {
+    // 手札がない場合は配置不可
+    if (player.hand.length === 0) return false;
+    // 既にスタックにカードがある場合は配置不可（1枚制限）
+    if (player.stack.length > 0) return false;
+    return true;
+  }
   if (state.phase === 'placement') {
-    return state.turnPlayerId === playerId && player.hand.length > 0;
+    // ターンプレイヤーでない場合は配置不可
+    if (state.turnPlayerId !== playerId) return false;
+    // 手札がない場合は配置不可
+    if (player.hand.length === 0) return false;
+    // このターンで既にカードを追加している場合は配置不可（1枚制限）
+    const turnStartStackCount = state.turnStartStackCounts?.[playerId] ?? 0;
+    if (player.stack.length > turnStartStackCount) return false;
+    return true;
   }
   return false;
 }

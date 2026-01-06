@@ -24,7 +24,12 @@ import type {
   RevealedCard,
   LogEntry,
 } from '../types/game';
-import { THEME_COLORS } from '../constants/game';
+
+// ========================================
+// 定数
+// ========================================
+
+const THEME_COLORS: ThemeColor[] = ['blue', 'red', 'yellow', 'green', 'purple', 'pink'];
 
 // ========================================
 // 型定義
@@ -100,6 +105,35 @@ function convertStackToCards(
 function calculateEliminatedCardCount(hand: Card[], stack: Card[]): number {
   const INITIAL_CARD_COUNT = 4;
   return INITIAL_CARD_COUNT - hand.length - stack.length;
+}
+
+/**
+ * オンラインモードのログをテストモードと同じ形式に変換
+ * playerIndexからplayerIdへの変換を行う
+ */
+function convertOnlineLogsToLocalLogs(
+  logs: any[],
+  players: Player[]
+): LogEntry[] {
+  return logs.map(log => {
+    // playerIndexが存在する場合はplayerIdに変換
+    if (typeof log.playerIndex === 'number' && log.playerIndex >= 0 && log.playerIndex < players.length) {
+      return {
+        ...log,
+        playerId: players[log.playerIndex].id,
+        playerIndex: log.playerIndex, // 互換性のため残す
+      };
+    }
+    // playerIdが既に存在する場合はそのまま
+    if (log.playerId) {
+      return log;
+    }
+    // どちらもない場合は空文字列を設定（エラー回避）
+    return {
+      ...log,
+      playerId: '',
+    };
+  });
 }
 
 /**
@@ -207,6 +241,9 @@ function convertFirestoreToLocalGameState(
   }
   // round_setupフェーズでは空オブジェクト（リセット）
 
+  // ログを変換（playerIndex → playerId）
+  const convertedLogs = convertOnlineLogsToLocalLogs(logs, players);
+
   return {
     phase: firestoreState.phase,
     currentRound: firestoreState.roundNumber,
@@ -218,7 +255,7 @@ function convertFirestoreToLocalGameState(
     bidStarterId,
     reaperOwnerId,
     revealedCards,
-    logs, // 渡されたログを使用
+    logs: convertedLogs, // 変換済みログを使用
     winnerId: firestoreState.winnerId,
     cardsToReveal,
     revealingPlayerId,

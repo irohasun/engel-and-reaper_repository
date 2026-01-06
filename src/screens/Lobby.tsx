@@ -25,8 +25,7 @@ import {
   sendHeartbeat,
 } from '../services/firestore';
 import type { Room, RoomPlayer } from '../types/firebase';
-import { THEME_COLORS } from '../constants/game';
-import type { ThemeColor } from '../types/game';
+import { THEME_COLORS } from '../types/game';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
@@ -39,7 +38,7 @@ type LobbyProps = {
 export function Lobby({ navigation, route }: LobbyProps) {
   const { roomId, roomCode } = route.params;
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
@@ -262,8 +261,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
 
             <View style={styles.playersList}>
               {players.map((player, index) => {
-                const colorIndex = player.colorIndex ?? index % THEME_COLORS.length;
-                const themeColor: ThemeColor = THEME_COLORS[colorIndex] || THEME_COLORS[0];
+                const themeColor = THEME_COLORS[player.colorIndex];
                 const isCurrentUser = player.userId === user?.userId;
                 
                 return (
@@ -285,12 +283,12 @@ export function Lobby({ navigation, route }: LobbyProps) {
                       <View style={styles.playerNameRow}>
                         <Text style={styles.playerName}>
                           {player.nickname}
-                          {player.userId === room?.hostId && ` (${t.language === 'ja' ? 'ホスト' : 'Host'})`}
-                          {isCurrentUser && ` (${t.language === 'ja' ? 'あなた' : 'You'})`}
+                          {player.userId === room?.hostId && ` (${language === 'ja' ? 'ホスト' : 'Host'})`}
+                          {isCurrentUser && ` (${language === 'ja' ? 'あなた' : 'You'})`}
                         </Text>
                         {!player.isConnected && (
                           <Text style={styles.disconnectedText}>
-                            {t.language === 'ja' ? '切断中' : 'Disconnected'}
+                            {language === 'ja' ? '切断中' : 'Disconnected'}
                           </Text>
                         )}
                       </View>
@@ -310,7 +308,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
               {Array.from({ length: (room?.maxPlayers || 6) - players.length }).map((_, index) => (
                 <View key={`empty-${index}`} style={styles.emptySlot}>
                   <Text style={styles.emptySlotText}>
-                    {t.language === 'ja' ? '参加者を募集中...' : 'Waiting for players...'}
+                    {language === 'ja' ? '参加者を募集中...' : 'Waiting for players...'}
                   </Text>
                 </View>
               ))}
@@ -323,6 +321,8 @@ export function Lobby({ navigation, route }: LobbyProps) {
             <Text style={styles.infoText}>• {t.roomCreate.rule2}</Text>
             <Text style={styles.infoText}>• {t.roomCreate.rule3}</Text>
             <Text style={styles.infoText}>• {t.roomCreate.rule4}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule5}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule6}</Text>
           </View>
         </ScrollView>
 

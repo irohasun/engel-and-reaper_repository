@@ -91,6 +91,8 @@ export type GameAction =
   | { type: 'ADVANCE_PHASE' }
   | { type: 'RESET_GAME' };
 
+export const THEME_COLORS: ThemeColor[] = ['blue', 'red', 'yellow', 'green', 'purple', 'pink'];
+
 export const PLAYER_COLOR_MAP: Record<ThemeColor, { bg: string; accent: string; name: string }> = {
   blue: { bg: 'bg-player-blue', accent: 'border-blue-400', name: 'Navy' },
   red: { bg: 'bg-player-red', accent: 'border-red-400', name: 'Crimson' },
@@ -99,3 +101,6 @@ export const PLAYER_COLOR_MAP: Record<ThemeColor, { bg: string; accent: string; 
   purple: { bg: 'bg-player-purple', accent: 'border-purple-400', name: 'Royal' },
   pink: { bg: 'bg-player-pink', accent: 'border-pink-400', name: 'Rose' },
 };
+
+export const DEFAULT_PLAYER_NAMES_JA = ['タロウ', 'ジロウ', 'サブロウ', 'シロウ', 'ゴロウ', 'ロクロウ'];
+export const DEFAULT_PLAYER_NAMES_EN = ['Captain', 'Navigator', 'Quartermaster', 'Gunner', 'Boatswain', 'Cook'];

@@ -1,0 +1,61 @@
+# 依存関係
+node_modules/
+**/node_modules/
+
+# ビルド成果物
+dist/
+build/
+.expo/
+.expo-shared/
+*.js.map
+
+# Cloud Functions コンパイル済みファイル
+functions/lib/
+
+# ログファイル
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# システムファイル
+.DS_Store
+*.swp
+*.swo
+*~
+Thumbs.db
+
+# IDE設定（開発に必要だがキャッシュには不要）
+.vscode/
+.idea/
+*.code-workspace
+
+# 環境変数ファイル
+.env
+.env.local
+.env.*.local
+
+# キャッシュディレクトリ
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.turbo/
+
+# テストカバレッジ
+coverage/
+.nyc_output/
+
+# 一時ファイル
+tmp/
+temp/
+*.tmp
+
+# パッケージマネージャーロックファイル（必要に応じて）
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+

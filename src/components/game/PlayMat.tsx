@@ -8,11 +8,12 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import type { Card, ThemeColor } from '../../types/game';
+import type { Card, ThemeColor, GamePhase } from '../../types/game';
 import { CardStack } from '../cards/CardStack';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { fontSizes } from '../../theme/fonts';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PlayMatProps {
   cards: Card[];
@@ -24,6 +25,9 @@ interface PlayMatProps {
   onSelect?: () => void;
   size?: 'sm' | 'md' | 'lg';
   isTurn?: boolean;
+  phase?: GamePhase;
+  highestBidderId?: string | null;
+  playerId?: string;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -54,9 +58,19 @@ export function PlayMat({
   onSelect,
   size = 'md',
   isTurn = false,
+  phase,
+  highestBidderId,
+  playerId,
 }: PlayMatProps) {
+  const { t } = useLanguage();
   const dimensions = PLAYMAT_SIZES[size];
-  const isReach = wins >= 1;
+  
+  // round_endフェーズで、判定成功したプレイヤーのwinsを1減らす
+  const displayWins = phase === 'round_end' && playerId === highestBidderId 
+    ? wins - 1 
+    : wins;
+  
+  const isReach = displayWins >= 1;
   // LinearGradientのcolorsプロパティに渡すため、タプル型として明示的に定義
   const matColors: [string, string] = isReach 
     ? reachColors[themeColor] 
@@ -109,9 +123,11 @@ export function PlayMat({
                 <Text style={[styles.playerName, isReach && styles.playerNameReach]}>
                   {playerName}
                 </Text>
-                {wins > 0 && (
+                {displayWins > 0 && (
                   <View style={styles.winsBadge}>
-                    <Text style={styles.winsText}>{wins} Win{wins > 1 ? 's' : ''}</Text>
+                    <Text style={styles.winsText}>
+                      {displayWins} {displayWins > 1 ? t.game.winsPlural : t.game.wins}
+                    </Text>
                   </View>
                 )}
               </View>

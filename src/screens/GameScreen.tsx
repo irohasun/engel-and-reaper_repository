@@ -29,7 +29,7 @@ import { Modal } from '../components/ui/Modal';
 import { NextPlayerSelectorModal } from '../components/ui/NextPlayerSelectorModal';
 import { Card } from '../components/cards/Card';
 import { getPhaseDisplayName, getTotalStackCount, getLogMessage, canPlaceCard, canStartBidding } from '../utils/gameLogic';
-import type { GameAction } from '../types/game';
+import type { GameAction, GamePhase } from '../types/game';
 import { getRoomById } from '../services/firestore';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
@@ -62,14 +62,14 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   const isLoading = isOnlineMode ? onlineHook.loading : false;
   const onlineError = isOnlineMode ? onlineHook.error : null;
   
-  // テストモード用のdispatch（早期リターンの前に取得）
+  // テストモード用のdispatch
   const { dispatch: testDispatch, currentPlayer: testCurrentPlayer, switchPlayer } = testModeHook;
   
-  // オンラインモード用のdispatchAction（早期リターンの前に取得）
+  // オンラインモード用のdispatchAction
   const { dispatchAction: onlineDispatchAction } = onlineHook;
   
   // ========================================
-  // 全てのuseState（早期リターンの前に配置）
+  // 全てのuseState（条件分岐の前に配置）
   // ========================================
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
@@ -80,28 +80,29 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   const [phaseTransitionVisible, setPhaseTransitionVisible] = useState(false);
   const [previousPhase, setPreviousPhase] = useState(state?.phase);
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [pendingPhase, setPendingPhase] = useState<GamePhase | null>(null);
   const [resolutionResult, setResolutionResult] = useState<{
     type: ResolutionType;
     playerName: string;
     targetName?: string;
   } | null>(null);
-  const resolutionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // 判定結果モーダル表示待ちフラグ（遅延表示中にフェーズ遷移を保留するため）
+  const [isWaitingForResolution, setIsWaitingForResolution] = useState(false);
   const lastProcessedLogIdRef = useRef<string | null>(null);
+  const resolutionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastProcessedGameOverRef = useRef<boolean>(false);
   
   // オンラインモードの場合、roomCodeを取得
   useEffect(() => {
-    // 条件チェックはeffect内で行う（フック順序を保つため）
-    if (!isOnlineMode || !roomId || roomCode) {
-      return;
+    if (isOnlineMode && roomId && !roomCode) {
+      getRoomById(roomId).then((room) => {
+        if (room) {
+          setRoomCode(room.roomCode);
+        }
+      }).catch((error) => {
+        console.error('ルーム情報取得エラー:', error);
+      });
     }
-    
-    getRoomById(roomId).then((room) => {
-      if (room) {
-        setRoomCode(room.roomCode);
-      }
-    }).catch((error) => {
-      console.error('ルーム情報取得エラー:', error);
-    });
   }, [isOnlineMode, roomId, roomCode]);
   
   // ========================================
@@ -129,46 +130,80 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   // 全てのuseEffect（条件分岐の前に配置）
   // ========================================
 
-  // フェーズ遷移の検知（判定モーダル表示中は少し遅らせる）
+  // フェーズ遷移の検知
   useEffect(() => {
-    if (!state) return;
-
-    if (resolutionResult) {
-      const timer = setTimeout(() => {
-        if (state.phase !== previousPhase) {
-          setPhaseTransitionVisible(true);
-          setPreviousPhase(state.phase);
-        }
-      }, 800); // 判定結果を少し見せてからフェーズ遷移を表示
-      return () => clearTimeout(timer);
-    }
-
-    if (state.phase !== previousPhase) {
-      setPhaseTransitionVisible(true);
+    if (state && state.phase !== previousPhase) {
+      // 最新のログをチェックして、判定結果ログが含まれているか確認
+      const latestLog = state.logs && state.logs.length > 0 
+        ? state.logs[state.logs.length - 1] 
+        : null;
+      const hasResolutionLog = latestLog && 
+        (latestLog.type === 'resolution_success' || latestLog.type === 'resolution_fail');
+      // game_endログもチェック
+      const hasGameEndLog = latestLog && latestLog.type === 'game_end';
+      
+      // 判定結果モーダルが出ている間、表示待ち中、判定結果ログが存在する場合、またはgame_overフェーズの場合はフェーズ遷移をスキップ
+      if (resolutionResult || isWaitingForResolution || hasResolutionLog || hasGameEndLog || state.phase === 'game_over') {
+        // 判定結果モーダルが表示される場合は、フェーズ遷移ポップアップは不要
+        setPendingPhase(null);
+        setPhaseTransitionVisible(false);
+      } else {
+        setPhaseTransitionVisible(true);
+        setPendingPhase(null);
+      }
       setPreviousPhase(state.phase);
     }
-  }, [state?.phase, previousPhase, resolutionResult]);
+  }, [state?.phase, previousPhase, resolutionResult, isWaitingForResolution, state?.logs]);
+
+  // game_overフェーズでの判定結果モーダル表示
+  useEffect(() => {
+    // game_overフェーズで、winnerIdが存在し、まだ処理していない場合
+    if (state?.phase === 'game_over' && state.winnerId && !lastProcessedGameOverRef.current) {
+      console.log('[ResolutionResult Debug] Game over phase detected, showing resolution modal');
+      
+      // 処理済みフラグを立てる（重複表示を防ぐ）
+      lastProcessedGameOverRef.current = true;
+      
+      // 勝者を取得
+      const winnerPlayer = state.players.find(p => p.id === state.winnerId);
+      const playerName = winnerPlayer?.name || 'Unknown Player';
+      
+      // 即座に「判定結果待ち」フラグを立てる
+      setIsWaitingForResolution(true);
+      // フェーズ遷移ポップアップを即座に非表示にする
+      setPhaseTransitionVisible(false);
+      
+      // 短い遅延を挟んでからモーダル表示
+      const delayMs = 600;
+      if (resolutionTimerRef.current) {
+        clearTimeout(resolutionTimerRef.current);
+      }
+      resolutionTimerRef.current = setTimeout(() => {
+        setIsWaitingForResolution(false);
+        setResolutionResult({
+          type: 'success',
+          playerName,
+        });
+      }, delayMs);
+    }
+    
+    // フェーズがgame_over以外になったら、フラグをリセット
+    if (state?.phase !== 'game_over') {
+      lastProcessedGameOverRef.current = false;
+    }
+  }, [state?.phase, state?.winnerId, state?.players]);
 
   // 判定結果ログの検知
   useEffect(() => {
-    if (!state) {
-      return;
-    }
-
-    if (resolutionTimerRef.current) {
-      clearTimeout(resolutionTimerRef.current);
-      resolutionTimerRef.current = null;
-    }
-
-    const logs = state.logs || [];
+    console.log('[ResolutionResult Debug] Logs:', state?.logs?.length || 0, 'logs available');
     
-    if (logs.length === 0) {
+    if (!state?.logs || state.logs.length === 0) {
       console.log('[ResolutionResult Debug] No logs available');
       return;
     }
 
     // 最新のログを確認
-    const lastLog = logs[logs.length - 1];
+    const lastLog = state.logs[state.logs.length - 1];
     
     console.log('[ResolutionResult Debug] Last log:', {
       id: lastLog.id,
@@ -180,9 +215,50 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     // 既に処理済みのログならスキップ
     if (lastLog.id === lastProcessedLogIdRef.current) return;
     
-    if (lastLog.type === 'resolution_success' || lastLog.type === 'resolution_fail') {
-      console.log('[ResolutionResult Debug] Showing resolution result modal');
+    // game_endログが検知された場合、その前のresolution_successログを探す
+    let resolutionLog = null;
+    let isGameEnd = false;
+    
+    if (lastLog.type === 'game_end') {
+      isGameEnd = true;
+      // 最新から2番目のログを確認（game_endの前のログ）
+      if (state.logs.length >= 2) {
+        const prevLog = state.logs[state.logs.length - 2];
+        if (prevLog.type === 'resolution_success' || prevLog.type === 'resolution_fail') {
+          resolutionLog = prevLog;
+          // game_endログのIDを記録して、次回スキップする
+          lastProcessedLogIdRef.current = lastLog.id;
+        }
+      }
+      
+      // resolution_successログが見つからない場合でも、game_endログ自体を成功として扱う
+      // これにより、サバイバー勝利などでresolution_successログがない場合でもモーダルが表示される
+      if (!resolutionLog) {
+        resolutionLog = {
+          ...lastLog,
+          type: 'resolution_success', // game_endを成功として扱う
+        };
+        lastProcessedLogIdRef.current = lastLog.id;
+        console.log('[ResolutionResult Debug] game_end log treated as resolution_success');
+      }
+    } else if (lastLog.type === 'resolution_success' || lastLog.type === 'resolution_fail') {
+      resolutionLog = lastLog;
       lastProcessedLogIdRef.current = lastLog.id;
+    }
+    
+    if (resolutionLog) {
+      // game_overフェーズのチェックで既にモーダルが表示されている場合はスキップ
+      if (state?.phase === 'game_over' && lastProcessedGameOverRef.current) {
+        console.log('[ResolutionResult Debug] Resolution modal already shown for game_over phase, skipping');
+        return;
+      }
+      
+      console.log('[ResolutionResult Debug] Showing resolution result modal');
+      
+      // 即座に「判定結果待ち」フラグを立てる（フェーズ遷移を保留するため）
+      setIsWaitingForResolution(true);
+      // フェーズ遷移ポップアップを即座に非表示にする
+      setPhaseTransitionVisible(false);
       
       // プレイヤー名の取得
       // ログには playerIndex が含まれているはず
@@ -195,24 +271,47 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
       // テストモードの場合はログのメッセージから推測するか、別途ロジックが必要だが
       // 今回はオンラインモード優先で実装
       
-      let playerIndex = -1;
+      // プレイヤー名の取得
+      // オンラインモードとテストモードの両方に対応
+      let playerName = 'Unknown Player';
       
-      // lastLog.playerIndex が number であることを確認
-      if (typeof lastLog.playerIndex === 'number') {
-        playerIndex = lastLog.playerIndex;
+      // 1. playerIdが存在する場合（テストモードまたは変換済みログ）
+      if (resolutionLog.playerId) {
+        const player = state.players.find(p => p.id === resolutionLog.playerId);
+        if (player) {
+          playerName = player.name;
+        }
+      }
+      // 2. playerIndexが存在する場合（オンラインモードの未変換ログ）
+      else if (typeof resolutionLog.playerIndex === 'number' && resolutionLog.playerIndex >= 0) {
+        const player = state.players[resolutionLog.playerIndex];
+        if (player) {
+          playerName = player.name;
+        }
+      }
+      // 3. game_endログの場合、winnerIdから勝者を取得
+      else if (isGameEnd && state.winnerId) {
+        const winnerPlayer = state.players.find(p => p.id === state.winnerId);
+        if (winnerPlayer) {
+          playerName = winnerPlayer.name;
+        }
       }
       
-      const player = state.players[playerIndex];
-      const playerName = player?.name || 'Unknown Player';
-      
-      // 最後のカードオープン直後に判定へ進むのを少し待つ
+      // カードめくりの視覚完了を待つため短い遅延を挟んでからモーダル表示
+      const delayMs = 600;
+      if (resolutionTimerRef.current) {
+        clearTimeout(resolutionTimerRef.current);
+      }
       resolutionTimerRef.current = setTimeout(() => {
-        if (lastLog.type === 'resolution_success') {
+        // 待ちフラグを解除（resolutionResultがセットされるので引き続き保留される）
+        setIsWaitingForResolution(false);
+        if (resolutionLog.type === 'resolution_success' || isGameEnd) {
           setResolutionResult({
             type: 'success',
             playerName,
           });
         } else {
+          // 失敗の場合、誰の死神だったかを取得
           const targetPlayerId = state.reaperOwnerId;
           const targetPlayer = state.players.find(p => p.id === targetPlayerId);
           const targetName = targetPlayer?.name || 'Unknown';
@@ -223,32 +322,19 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
             targetName,
           });
         }
-      }, 700);
+      }, delayMs);
     }
-  }, [state?.logs, state?.players, state?.reaperOwnerId]);
+  }, [state?.logs, state?.players, state?.reaperOwnerId, state?.winnerId]);
 
-  // ゲーム終了時の処理
+  // アンマウント時にタイマーをクリア
   useEffect(() => {
-    if (state && state.phase === 'game_over' && state.winnerId) {
-      // 勝者情報を取得
-      const winner = state.players.find(p => p.id === state.winnerId);
-      const winnerName = winner?.name || 'Unknown';
-      const winnerColor = winner?.themeColor || 'blue';
-      
-      // 少し待ってから結果画面へ
-      const timer = setTimeout(() => {
-        navigation.navigate('Result', { 
-          winnerId: state.winnerId!,
-          winnerName,
-          winnerColor,
-          roomId: isOnlineMode ? roomId : undefined,
-          roomCode: isOnlineMode ? roomCode || undefined : undefined,
-          mode: isOnlineMode ? 'online' : 'test',
-        });
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [state?.phase, state?.winnerId, state?.players, navigation]);
+    return () => {
+      if (resolutionTimerRef.current) {
+        clearTimeout(resolutionTimerRef.current);
+      }
+    };
+  }, []);
+
   
   // ========================================
   // 派生状態の計算
@@ -415,6 +501,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     if (state.phase !== 'round_setup') return;
     if (actionLoading) return;
     
+    // canPlaceCardのチェックを追加（既にスタックにカードがある場合は配置不可）
+    if (!canPlaceCard(state, currentViewPlayerId!)) {
+      return;
+    }
+    
     await dispatch({
       type: 'PLACE_INITIAL_CARD',
       playerId: currentViewPlayerId!,
@@ -568,24 +659,29 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     await dispatch({ type: 'SELECT_NEXT_PLAYER', nextPlayerId });
   };
 
-  const totalCards = getTotalStackCount(state);
-  // stateがnullの場合のローディング表示（フック順序を保つためreturnはここ）
-  if (!state) {
-    return (
-      <LinearGradient
-        colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
-        style={styles.container}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.tavern.gold} />
-            <Text style={styles.loadingText}>{t.common.loading}</Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-    );
-  }
+  const handleResolutionComplete = () => {
+    // 判定結果モーダルが閉じられたときは、フェーズ遷移ポップアップは表示しない
+    setResolutionResult(null);
+    setPendingPhase(null);
+    
+    // game_overフェーズの場合は、結果画面に遷移
+    if (state && state.phase === 'game_over' && state.winnerId) {
+      const winner = state.players.find(p => p.id === state.winnerId);
+      const winnerName = winner?.name || 'Unknown';
+      const winnerColor = winner?.themeColor || 'blue';
+      
+      navigation.navigate('Result', { 
+        winnerId: state.winnerId!,
+        winnerName,
+        winnerColor,
+        roomId: isOnlineMode ? roomId : undefined,
+        roomCode: isOnlineMode ? roomCode || undefined : undefined,
+        mode: isOnlineMode ? 'online' : 'test',
+      });
+    }
+  };
 
+  const totalCards = getTotalStackCount(state);
   const minBid = 1;
   const maxBid = totalCards;
   const currentBid = bidModalMode === 'raise' ? state.bidAmount : 0;
@@ -664,6 +760,9 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
               playerName={currentPlayer.name}
               size="lg"
               isTurn={isCurrentPlayerTurn || isResolutionPlayer}
+              phase={state.phase}
+              highestBidderId={state.highestBidderId}
+              playerId={currentPlayer.id}
               isSelectable={
                 (state.phase === 'round_setup' && currentPlayer.stack.length > 0) ||
                 (state.phase === 'placement' && isCurrentPlayerTurn && hasPlacedCardThisTurn) ||
@@ -683,7 +782,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
             {/* めくられたカードの表示 */}
             {isResolutionPhase && state.revealedCards && state.revealedCards.length > 0 && (
               <View style={styles.revealedCardsArea}>
-                <Text style={styles.revealedCardsTitle}>Revealed Cards:</Text>
+                <Text style={styles.revealedCardsTitle}>{t.game.resolution.revealedCardsTitle}</Text>
                 <View style={styles.revealedCardsList}>
                   {(state.revealedCards || []).slice(-state.bidAmount).map((revealedCard, index) => {
                     const player = state.players.find((p) => p.id === revealedCard.playerId);
@@ -827,7 +926,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
                   </>
                 ) : (
                   <Text style={styles.waitingText}>
-                    {t.game.penalty.waitingFor.replace('{name}', state.players.find(p => p.id === penaltySelectorId)?.name || t.common.player)}
+                    {language === 'ja' ? `${state.players.find(p => p.id === penaltySelectorId)?.name || 'プレイヤー'}が除外カードを選択中です...` : `Waiting for ${state.players.find(p => p.id === penaltySelectorId)?.name || 'player'}...`}
                   </Text>
                 )}
               </>
@@ -837,7 +936,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
               <>
                 {isOnlineMode ? (
                   <Text style={styles.waitingText}>
-                    {t.game.phase.preparingNextRound}
+                    {language === 'ja' ? '次のラウンドを準備中...' : 'Preparing next round...'}
                   </Text>
                 ) : (
               <Button
@@ -845,7 +944,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
                 onPress={handleAdvancePhase}
                 style={styles.actionButton}
               >
-                Next Round
+                {t.game.nextRound}
               </Button>
                 )}
               </>
@@ -979,7 +1078,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
           type={resolutionResult?.type || null}
           playerName={resolutionResult?.playerName || ''}
           targetName={resolutionResult?.targetName}
-          onComplete={() => setResolutionResult(null)}
+          onComplete={handleResolutionComplete}
         />
 
         {/* フェーズ遷移モーダル */}

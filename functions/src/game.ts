@@ -120,6 +120,13 @@ async function handlePlaceCard(
     }
   }
   
+  // round_setupフェーズの場合、既にスタックにカードがある場合は配置不可（1枚制限）
+  if (gameState.phase === 'round_setup') {
+    if (player.stack.length > 0) {
+      throw new Error('Already placed a card in round setup');
+    }
+  }
+  
   // 手札存在確認
   if (payload.cardIndex < 0 || payload.cardIndex >= player.hand.length) {
     throw new Error('Invalid card index');

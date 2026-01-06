@@ -64,29 +64,13 @@ export function RoomCreate({ navigation }: RoomCreateProps) {
     try {
       setLoading(true);
 
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RoomCreate.tsx:64',message:'handleCreate start',data:{nickname,hasUser:!!user,userNickname:user?.nickname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
       // ニックネームを更新（変更された場合）
       if (nickname !== user?.nickname) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RoomCreate.tsx:69',message:'Before updateNickname',data:{nickname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         await updateNickname(nickname);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RoomCreate.tsx:70',message:'After updateNickname',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
       }
 
       // ルームを作成（最大6人固定）
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RoomCreate.tsx:73',message:'Before createRoom',data:{nickname,maxPlayers:6},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       const result = await createRoom(nickname, 6);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/c5d4bc66-6d41-436a-91b3-d82a4207a1f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RoomCreate.tsx:74',message:'After createRoom',data:{hasResult:!!result,roomId:result?.roomId,roomCode:result?.roomCode},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
 
       // 待機所画面へ遷移
       navigation.navigate('Lobby', {
@@ -156,6 +140,8 @@ export function RoomCreate({ navigation }: RoomCreateProps) {
             <Text style={styles.infoText}>• {t.roomCreate.rule2}</Text>
             <Text style={styles.infoText}>• {t.roomCreate.rule3}</Text>
             <Text style={styles.infoText}>• {t.roomCreate.rule4}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule5}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule6}</Text>
           </View>
         </ScrollView>
 

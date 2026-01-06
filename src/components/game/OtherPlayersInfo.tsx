@@ -88,6 +88,9 @@ export function OtherPlayersInfo({
                 playerName={player.name}
                 size="sm"
                 isTurn={isHighlighted}
+                phase={phase}
+                highestBidderId={highestBidderId}
+                playerId={player.id}
                 isSelectable={isSelectable}
                 onSelect={isSelectable ? () => onSelectPlayer?.(player.id) : undefined}
               />

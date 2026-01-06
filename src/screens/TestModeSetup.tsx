@@ -7,8 +7,7 @@ import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, Play } from '../components/icons/Icons';
 import { useTestMode } from '../contexts/GameContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN, THEME_COLORS } from '../constants/game';
-import type { ThemeColor } from '../types/game';
+import { DEFAULT_PLAYER_NAMES_JA, DEFAULT_PLAYER_NAMES_EN, THEME_COLORS, type ThemeColor } from '../types/game';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
@@ -117,6 +116,8 @@ export function TestModeSetup({ navigation }: TestModeSetupProps) {
             <Text style={styles.infoText}>• {t.roomCreate.rule2}</Text>
             <Text style={styles.infoText}>• {t.roomCreate.rule3}</Text>
             <Text style={styles.infoText}>• {t.roomCreate.rule4}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule5}</Text>
+            <Text style={styles.infoText}>• {t.roomCreate.rule6}</Text>
           </View>
         </ScrollView>
 

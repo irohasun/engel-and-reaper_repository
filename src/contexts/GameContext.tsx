@@ -133,6 +133,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const player = getPlayerById(state, playerId);
       if (!player || player.hand.length === 0) return state;
 
+      // placementフェーズでは、このターンで既にカードを追加している場合は配置不可（1枚制限）
+      if (state.phase === 'placement') {
+        const turnStartStackCount = state.turnStartStackCounts?.[playerId] ?? 0;
+        if (player.stack.length > turnStartStackCount) return state;
+      }
+
       const card = player.hand[cardIndex];
       if (!card) return state;
 
@@ -147,8 +153,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       });
 
-      // 2枚目を配置した後は、自動的に次のプレイヤーに移らず、待機状態にする
-      // プレイヤーがReadyボタンを押すまで待つ
+      // カードを配置した後は、自動的に次のプレイヤーに移らず、待機状態にする
+      // プレイヤーが「確定して次へ」ボタンを押すまで待つ
       return {
         ...state,
         players: updatedPlayers,

@@ -26,7 +26,7 @@ const CODE_LENGTH = 4;
 
 export function RoomJoin({ navigation }: RoomJoinProps) {
   const { user, updateNickname, isAuthenticated, signIn } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [code, setCode] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -203,14 +203,14 @@ export function RoomJoin({ navigation }: RoomJoinProps) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t.roomJoin.roomCode}</Text>
             <Text style={styles.helperText}>
-              {t.language === 'ja' ? 'ホストから共有された4桁の合言葉を入力してください' : 'Enter the 4-digit code shared by the host'}
+              {language === 'ja' ? 'ホストから共有された4桁の合言葉を入力してください' : 'Enter the 4-digit code shared by the host'}
             </Text>
             
             <View style={styles.codeContainer}>
               {code.map((char, index) => (
                 <TextInput
                   key={index}
-                  ref={ref => inputRefs.current[index] = ref}
+                  ref={ref => { inputRefs.current[index] = ref; }}
                   value={char}
                   onChangeText={(value) => handleCodeChange(index, value)}
                   onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
@@ -230,10 +230,10 @@ export function RoomJoin({ navigation }: RoomJoinProps) {
           </View>
 
           <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>{t.roomJoin.notFound}場合 / If room not found:</Text>
-            <Text style={styles.infoText}>• {t.language === 'ja' ? '合言葉が正しいか確認してください' : 'Check if the room code is correct'}</Text>
-            <Text style={styles.infoText}>• {t.language === 'ja' ? 'ルームが既に満員または開始済みの可能性があります' : 'Room might be full or already started'}</Text>
-            <Text style={styles.infoText}>• {t.language === 'ja' ? 'ホストに新しいルームの作成を依頼してください' : 'Ask host to create a new room'}</Text>
+            <Text style={styles.infoTitle}>{t.roomJoin.notFoundTitle}</Text>
+            <Text style={styles.infoText}>• {language === 'ja' ? '合言葉が正しいか確認してください' : 'Check if the room code is correct'}</Text>
+            <Text style={styles.infoText}>• {language === 'ja' ? 'ルームが既に満員または開始済みの可能性があります' : 'Room might be full or already started'}</Text>
+            <Text style={styles.infoText}>• {language === 'ja' ? 'ホストに新しいルームの作成を依頼してください' : 'Ask host to create a new room'}</Text>
           </View>
         </View>
 
