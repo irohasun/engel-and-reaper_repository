@@ -113,7 +113,7 @@ export function canPlaceCard(state: GameState, playerId: string): boolean {
   if (state.phase === 'round_setup') {
     // 手札がない場合は配置不可
     if (player.hand.length === 0) return false;
-    // スタックに既にカードがある場合は配置不可（1枚制限、置き換えはサーバー側で処理）
+    // スタックに既にカードがある場合は配置不可（1枚制限）
     if (player.stack.length > 0) return false;
     return true;
   }

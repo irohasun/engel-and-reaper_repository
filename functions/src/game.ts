@@ -120,29 +120,22 @@ async function handlePlaceCard(
   // カードを手札から取得
   const card = player.hand[payload.cardIndex];
   
-  // round_setupフェーズの場合、既にカードがある場合は置き換え（既存のカードを手札に戻す）
+  // round_setupフェーズの場合、1枚制限（既に1枚ある場合は追加不可）
   if (gameState.phase === 'round_setup') {
-    // 1枚制限: スタックに1枚を超えるカードがある場合はエラー
-    if (player.stack.length > 1) {
+    // 1枚制限: スタックに既にカードがある場合はエラー（2枚目以降を追加不可）
+    if (player.stack.length > 0) {
       throw new Error('Cannot place more than one card in round setup');
     }
     
     const newHand = player.hand.filter((_, i) => i !== payload.cardIndex);
-    let handWithReturnedCard = newHand;
     
-    // 既にスタックにカードがある場合（1枚）、そのカードを手札に戻す
-    if (player.stack.length === 1) {
-      const returnedCard = player.stack[0];
-      handWithReturnedCard = [...newHand, returnedCard];
-    }
-    
-    // スタックを新しいカード1枚のみにする（置き換え）
+    // スタックに新しいカード1枚を追加
     const newStack = [card];
     
     const newPlayers = [...gameState.players];
     newPlayers[playerIndex] = {
       ...player,
-      hand: handWithReturnedCard,
+      hand: newHand,
       stack: newStack,
     };
 
@@ -1035,6 +1028,18 @@ export const processGameAction = functions.firestore.onDocumentCreated(
 
       // トランザクションで状態更新
       await db.runTransaction(async (transaction) => {
+        // トランザクション内で状態を再読み取り（競合状態を防ぐため）
+        const currentGameStateDoc = await transaction.get(gameStateRef);
+        const currentGameState = currentGameStateDoc.data() as GameState;
+        const currentPlayer = currentGameState.players[playerIndex];
+        
+        // round_setupフェーズでplace_cardアクションの場合、スタックに既にカードがある場合はエラー（1枚制限）
+        if (type === 'place_card' && currentGameState.phase === 'round_setup') {
+          if (currentPlayer.stack.length > 0) {
+            throw new Error('Cannot place more than one card in round setup');
+          }
+        }
+        
         // ゲーム状態更新（phaseStartedAtはserverTimestampに置き換え）
         const updateData: any = {
           ...result.newState,

@@ -502,8 +502,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     if (actionLoading) return;
     if (currentPlayer.hand.length === 0) return;
     
-    // 既に1枚ある場合は置き換えとしてサーバーに送信
-    // サーバー側で置き換え処理が行われる
+    // 既に1枚以上ある場合は配置不可（1枚制限）
+    if (currentPlayer.stack.length > 0) {
+      return;
+    }
+    
     // 0枚の場合は新規追加として処理
     
     await dispatch({
