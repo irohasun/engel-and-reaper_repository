@@ -113,7 +113,7 @@ export function canPlaceCard(state: GameState, playerId: string): boolean {
   if (state.phase === 'round_setup') {
     // 手札がない場合は配置不可
     if (player.hand.length === 0) return false;
-    // 既にスタックにカードがある場合は配置不可（1枚制限）
+    // スタックに既にカードがある場合は配置不可（1枚制限、置き換えはサーバー側で処理）
     if (player.stack.length > 0) return false;
     return true;
   }
@@ -122,9 +122,10 @@ export function canPlaceCard(state: GameState, playerId: string): boolean {
     if (state.turnPlayerId !== playerId) return false;
     // 手札がない場合は配置不可
     if (player.hand.length === 0) return false;
-    // このターンで既にカードを追加している場合は配置不可（1枚制限）
+    // このターンで追加したカードが1枚を超える場合は配置不可（1枚制限）
     const turnStartStackCount = state.turnStartStackCounts?.[playerId] ?? 0;
-    if (player.stack.length > turnStartStackCount) return false;
+    if (player.stack.length > turnStartStackCount + 1) return false;
+    // 既にカードを追加していても配置可能（置き換え、ただし1枚まで）
     return true;
   }
   return false;

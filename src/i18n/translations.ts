@@ -124,6 +124,7 @@ export const translations = {
         title: 'ペナルティ',
         instruction: '除外するカードを1枚選んでください',
         targetInstruction: '{name}のカードを1枚選んで除外してください',
+        hint: 'カードは裏向きで表示されています。1枚選んで除外してください',
       },
       log: {
         title: 'ゲームログ',
@@ -272,6 +273,7 @@ export const translations = {
         title: 'Penalty',
         instruction: 'Select a card to eliminate',
         targetInstruction: "Select a card from {name} to eliminate",
+        hint: 'Cards are shown face-down. Select one to eliminate',
       },
       log: {
         title: 'Game Log',

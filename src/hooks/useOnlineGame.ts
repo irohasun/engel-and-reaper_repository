@@ -396,8 +396,7 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
 
         // ラウンド準備: カードを手札に戻す
         case 'RETURN_INITIAL_CARD':
-          // サーバー側で対応（place_cardを取り消す機能が必要な場合は別途実装）
-          console.warn('RETURN_INITIAL_CARD is not directly supported in online mode');
+          await sendGameAction(roomId, user.userId, 'return_initial_card', {});
           break;
 
         // 準備完了

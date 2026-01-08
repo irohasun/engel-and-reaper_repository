@@ -500,11 +500,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     if (selectedCardIndex === null) return;
     if (state.phase !== 'round_setup') return;
     if (actionLoading) return;
+    if (currentPlayer.hand.length === 0) return;
     
-    // canPlaceCardのチェックを追加（既にスタックにカードがある場合は配置不可）
-    if (!canPlaceCard(state, currentViewPlayerId!)) {
-      return;
-    }
+    // 既に1枚ある場合は置き換えとしてサーバーに送信
+    // サーバー側で置き換え処理が行われる
+    // 0枚の場合は新規追加として処理
     
     await dispatch({
       type: 'PLACE_INITIAL_CARD',
@@ -1023,14 +1023,14 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
           }}
           title={
             isOtherPlayerReaper
-              ? `Select a card from ${state.players.find(p => p.id === state.highestBidderId)?.name || 'opponent'} to eliminate`
-              : 'Select a card to eliminate'
+              ? t.game.penalty.targetInstruction.replace('{name}', state.players.find(p => p.id === state.highestBidderId)?.name || 'opponent')
+              : t.game.penalty.instruction
           }
         >
           <View style={styles.penaltyModalContent}>
             {isOtherPlayerReaper && (
               <Text style={styles.penaltyModalHint}>
-                Cards are shown face-down. Select one to eliminate.
+                {t.game.penalty.hint}
               </Text>
             )}
             <View style={styles.penaltyCardGrid}>
@@ -1060,7 +1060,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
               disabled={selectedPenaltyCardIndex === null}
               style={styles.penaltyConfirmButton}
             >
-              Confirm
+              {t.common.confirm}
             </Button>
           </View>
         </Modal>

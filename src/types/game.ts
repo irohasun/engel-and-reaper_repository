@@ -14,6 +14,7 @@ export type GamePhase =
 
 export type LogType =
   | 'place_card'
+  | 'return_card'
   | 'bid_start'
   | 'raise'
   | 'pass'

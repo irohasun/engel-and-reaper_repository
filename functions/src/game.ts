@@ -112,28 +112,95 @@ async function handlePlaceCard(
     throw new Error('Not your turn');
   }
   
-  // placementフェーズの場合、このターンで既にカードを追加していないかチェック
-  if (gameState.phase === 'placement') {
-    const turnStartStackCount = gameState.turnStartStackCounts?.[player.userId] || 0;
-    if (player.stack.length > turnStartStackCount) {
-      throw new Error('Already placed a card this turn');
-    }
-  }
-  
-  // round_setupフェーズの場合、既にスタックにカードがある場合は配置不可（1枚制限）
-  if (gameState.phase === 'round_setup') {
-    if (player.stack.length > 0) {
-      throw new Error('Already placed a card in round setup');
-    }
-  }
-  
   // 手札存在確認
   if (payload.cardIndex < 0 || payload.cardIndex >= player.hand.length) {
     throw new Error('Invalid card index');
   }
 
-  // カードを手札から場に移動
+  // カードを手札から取得
   const card = player.hand[payload.cardIndex];
+  
+  // round_setupフェーズの場合、既にカードがある場合は置き換え（既存のカードを手札に戻す）
+  if (gameState.phase === 'round_setup') {
+    // 1枚制限: スタックに1枚を超えるカードがある場合はエラー
+    if (player.stack.length > 1) {
+      throw new Error('Cannot place more than one card in round setup');
+    }
+    
+    const newHand = player.hand.filter((_, i) => i !== payload.cardIndex);
+    let handWithReturnedCard = newHand;
+    
+    // 既にスタックにカードがある場合（1枚）、そのカードを手札に戻す
+    if (player.stack.length === 1) {
+      const returnedCard = player.stack[0];
+      handWithReturnedCard = [...newHand, returnedCard];
+    }
+    
+    // スタックを新しいカード1枚のみにする（置き換え）
+    const newStack = [card];
+    
+    const newPlayers = [...gameState.players];
+    newPlayers[playerIndex] = {
+      ...player,
+      hand: handWithReturnedCard,
+      stack: newStack,
+    };
+
+    return {
+      newState: {
+        players: newPlayers,
+      },
+      logs: [{
+        type: 'place_card',
+        message: `プレイヤー${playerIndex + 1}がカードを追加しました`,
+        playerIndex,
+      }],
+    };
+  }
+  
+  // placementフェーズの場合、このターンで既にカードを追加している場合は置き換え
+  if (gameState.phase === 'placement') {
+    const turnStartStackCount = gameState.turnStartStackCounts?.[player.userId] || 0;
+    
+    // 1枚制限: このターンで追加したカードが1枚を超える場合はエラー
+    if (player.stack.length > turnStartStackCount + 1) {
+      throw new Error('Cannot place more than one card per turn in placement phase');
+    }
+    
+    const newHand = player.hand.filter((_, i) => i !== payload.cardIndex);
+    let handWithReturnedCard = newHand;
+    let newStack = [...player.stack];
+    
+    // このターンで追加したカードがある場合（1枚）、そのカードを手札に戻す
+    if (player.stack.length === turnStartStackCount + 1) {
+      const returnedCard = player.stack[player.stack.length - 1];
+      handWithReturnedCard = [...newHand, returnedCard];
+      newStack = player.stack.slice(0, -1);
+    }
+
+    // 新しいカードをスタックに追加
+    newStack = [...newStack, card];
+    
+    const newPlayers = [...gameState.players];
+    newPlayers[playerIndex] = {
+      ...player,
+      hand: handWithReturnedCard,
+      stack: newStack,
+    };
+
+    return {
+      newState: {
+        players: newPlayers,
+      },
+      logs: [{
+        type: 'place_card',
+        message: `プレイヤー${playerIndex + 1}がカードを追加しました`,
+        playerIndex,
+      }],
+    };
+  }
+
+  // 通常のカード配置（上記の条件に該当しない場合）
   const newHand = player.hand.filter((_, i) => i !== payload.cardIndex);
   const newStack = [...player.stack, card];
 
@@ -299,6 +366,48 @@ async function handleReturnPlacedCard(
     },
     logs: [{
       type: 'return_placed_card',
+      message: `プレイヤー${playerIndex + 1}がカードを戻しました`,
+      playerIndex,
+    }],
+  };
+}
+
+/**
+ * round_setupフェーズで配置したカードを手札に戻す
+ */
+async function handleReturnInitialCard(
+  gameState: GameState,
+  playerIndex: number
+): Promise<{ newState: Partial<GameState>; logs: any[] }> {
+  if (gameState.phase !== 'round_setup') {
+    throw new Error('Invalid phase for returning initial card');
+  }
+
+  const player = gameState.players[playerIndex];
+  
+  // スタックにカードがない場合はエラー
+  if (player.stack.length === 0) {
+    throw new Error('No card placed');
+  }
+
+  // スタックのカードを取り出し、手札に戻す
+  const card = player.stack[0];
+  const newStack: any[] = [];
+  const newHand = [...player.hand, card];
+
+  const newPlayers = [...gameState.players];
+  newPlayers[playerIndex] = {
+    ...player,
+    hand: newHand,
+    stack: newStack,
+  };
+
+  return {
+    newState: {
+      players: newPlayers,
+    },
+    logs: [{
+      type: 'return_initial_card',
       message: `プレイヤー${playerIndex + 1}がカードを戻しました`,
       playerIndex,
     }],
@@ -877,6 +986,10 @@ export const processGameAction = functions.firestore.onDocumentCreated(
 
         case 'return_placed_card':
           result = await handleReturnPlacedCard(gameState, playerIndex);
+          break;
+
+        case 'return_initial_card':
+          result = await handleReturnInitialCard(gameState, playerIndex);
           break;
 
         case 'bid_start':
