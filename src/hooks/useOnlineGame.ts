@@ -338,6 +338,22 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
         });
         playerIndexMapRef.current = newPlayerIndexMap;
         
+        // デバッグログ: 状態更新前のプレイヤー情報を確認
+        if (user?.userId) {
+          const currentPlayerIndex = firestoreGameState.players.findIndex(p => p.userId === user.userId);
+          if (currentPlayerIndex >= 0) {
+            const currentPlayer = firestoreGameState.players[currentPlayerIndex];
+            console.log('[useOnlineGame] Game state updated', {
+              phase: firestoreGameState.phase,
+              playerIndex: currentPlayerIndex,
+              handLength: currentPlayer.hand.length,
+              stackLength: currentPlayer.stack.length,
+              hand: currentPlayer.hand,
+              stack: currentPlayer.stack,
+            });
+          }
+        }
+        
         // Firestore状態をローカル状態に変換
         const localGameState = convertFirestoreToLocalGameState(
           firestoreGameState,
@@ -396,7 +412,17 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
 
         // ラウンド準備: カードを手札に戻す
         case 'RETURN_INITIAL_CARD':
-          await sendGameAction(roomId, user.userId, 'return_initial_card', {});
+          console.log('[useOnlineGame] Dispatching RETURN_INITIAL_CARD action', {
+            roomId,
+            userId: user.userId,
+          });
+          try {
+            await sendGameAction(roomId, user.userId, 'return_initial_card', {});
+            console.log('[useOnlineGame] RETURN_INITIAL_CARD action sent successfully');
+          } catch (error) {
+            console.error('[useOnlineGame] Error sending RETURN_INITIAL_CARD action', error);
+            throw error;
+          }
           break;
 
         // 準備完了

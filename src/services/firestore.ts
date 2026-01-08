@@ -266,14 +266,38 @@ export const sendGameAction = async <T extends GameActionType>(
   type: T,
   payload: GameActionPayload[T]
 ): Promise<void> => {
-  await setDoc(doc(collection(firestore, 'gameActions')), {
+  const actionRef = doc(collection(firestore, 'gameActions'));
+  const actionData = {
     roomId,
     userId,
     type,
     payload,
     timestamp: serverTimestamp(),
     processed: false,
+  };
+  
+  console.log('[sendGameAction] Sending game action', {
+    actionId: actionRef.id,
+    roomId,
+    userId,
+    type,
+    payload,
   });
+  
+  try {
+    await setDoc(actionRef, actionData);
+    console.log('[sendGameAction] Game action sent successfully', {
+      actionId: actionRef.id,
+      type,
+    });
+  } catch (error) {
+    console.error('[sendGameAction] Error sending game action', {
+      actionId: actionRef.id,
+      type,
+      error,
+    });
+    throw error;
+  }
 };
 
 // ========================================

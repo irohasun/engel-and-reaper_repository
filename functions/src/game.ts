@@ -372,6 +372,12 @@ async function handleReturnInitialCard(
   gameState: GameState,
   playerIndex: number
 ): Promise<{ newState: Partial<GameState>; logs: any[] }> {
+  console.log('[handleReturnInitialCard] Called', {
+    phase: gameState.phase,
+    playerIndex,
+    stackLength: gameState.players[playerIndex]?.stack.length || 0,
+  });
+  
   if (gameState.phase !== 'round_setup') {
     throw new Error('Invalid phase for returning initial card');
   }
@@ -387,13 +393,29 @@ async function handleReturnInitialCard(
   const card = player.stack[0];
   const newStack: any[] = [];
   const newHand = [...player.hand, card];
+  
+  console.log('[handleReturnInitialCard] Returning card to hand', {
+    playerIndex,
+    cardType: card,
+    newHandLength: newHand.length,
+  });
 
   const newPlayers = [...gameState.players];
   newPlayers[playerIndex] = {
     ...player,
     hand: newHand,
     stack: newStack,
+    isReady: false, // カードを手札に戻したので、準備完了状態を解除
   };
+
+  console.log('[handleReturnInitialCard] Returning new state', {
+    playerIndex,
+    newHandLength: newHand.length,
+    newStackLength: newStack.length,
+    newPlayersLength: newPlayers.length,
+    updatedPlayerHandLength: newPlayers[playerIndex].hand.length,
+    updatedPlayerStackLength: newPlayers[playerIndex].stack.length,
+  });
 
   return {
     newState: {
@@ -936,10 +958,32 @@ function advanceToNextRound(gameState: GameState): { newState: Partial<GameState
 export const processGameAction = functions.firestore.onDocumentCreated(
   'gameActions/{actionId}',
   async (event) => {
+    console.log('[processGameAction] Trigger fired', {
+      actionId: event.params.actionId,
+      hasData: !!event.data,
+      dataExists: event.data?.exists,
+    });
+    
     const action = event.data?.data();
-    if (!action || action.processed) return;
+    if (!action || action.processed) {
+      console.log('[processGameAction] Action already processed or missing', {
+        actionId: event.params.actionId,
+        processed: action?.processed,
+        hasAction: !!action,
+        actionData: action,
+      });
+      return;
+    }
 
     const { roomId, userId, type, payload } = action;
+    
+    console.log('[processGameAction] Processing action', {
+      actionId: event.params.actionId,
+      roomId,
+      userId,
+      type,
+      payload,
+    });
 
     try {
       // ゲーム状態取得
@@ -963,6 +1007,13 @@ export const processGameAction = functions.firestore.onDocumentCreated(
 
       // アクション処理
       let result: { newState: Partial<GameState>; logs: any[] };
+
+      console.log('[processGameAction] Action type received', {
+        type,
+        typeLength: type?.length,
+        typeValue: JSON.stringify(type),
+        availableCases: ['place_card', 'ready', 'confirm_placement', 'return_placed_card', 'return_initial_card', 'bid_start', 'raise', 'pass', 'reveal_card', 'select_penalty_card'],
+      });
 
       switch (type) {
         case 'place_card':
@@ -1048,6 +1099,44 @@ export const processGameAction = functions.firestore.onDocumentCreated(
         if (result.newState.phaseStartedAt) {
           updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
         }
+        
+        // players配列が含まれている場合、明示的に設定する（Firestoreのupdateはネストされた配列を完全に置き換えない可能性があるため）
+        if (result.newState.players) {
+          updateData.players = result.newState.players;
+        }
+        
+        console.log('[processGameAction] Updating game state', {
+          type,
+          phase: currentGameState.phase,
+          updateDataKeys: Object.keys(updateData),
+          hasPlayers: 'players' in updateData,
+          playersLength: updateData.players?.length,
+        });
+        
+        // デバッグログ: return_initial_cardアクションの場合、プレイヤーの状態を確認
+        if (type === 'return_initial_card' && updateData.players) {
+          const updatedPlayer = updateData.players[playerIndex];
+          console.log('[processGameAction] Return initial card - player state', {
+            playerIndex,
+            handLength: updatedPlayer?.hand?.length,
+            stackLength: updatedPlayer?.stack?.length,
+            hand: updatedPlayer?.hand,
+            stack: updatedPlayer?.stack,
+          });
+          
+          // 更新前の状態も確認
+          const currentPlayer = currentGameState.players[playerIndex];
+          console.log('[processGameAction] Return initial card - current player state', {
+            playerIndex,
+            handLength: currentPlayer?.hand?.length,
+            stackLength: currentPlayer?.stack?.length,
+            hand: currentPlayer?.hand,
+            stack: currentPlayer?.stack,
+          });
+        }
+        
+        // players配列を含むすべての更新を一度に行う
+        // updateDataには既にplayersが含まれているので、一度のupdateで更新できる
         transaction.update(gameStateRef, updateData);
 
         // ログ追加

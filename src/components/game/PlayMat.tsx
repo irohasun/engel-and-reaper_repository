@@ -117,6 +117,8 @@ export function PlayMat({
               themeColor={themeColor}
               revealedCount={revealedCount}
               size={size}
+              isSelectable={isSelectable}
+              onSelect={onSelect}
             />
             {size !== 'sm' && (
               <View style={styles.playerInfo}>
