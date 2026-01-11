@@ -108,6 +108,9 @@ export interface GameState {
   // ゲーム終了情報
   winnerId: string | null;       // 勝者のuserId
   
+  // placementフェーズ用: ターン開始時の各プレイヤーのスタック枚数
+  turnStartStackCounts?: Record<string, number>;
+  
   // タイムスタンプ
   updatedAt: Timestamp;
   phaseStartedAt: Timestamp;     // 現フェーズ開始時刻
@@ -120,6 +123,9 @@ export interface GameState {
 export type GameActionType =
   | 'place_card'
   | 'ready'
+  | 'confirm_placement'
+  | 'return_placed_card'
+  | 'return_initial_card'
   | 'bid_start'
   | 'raise'
   | 'pass'
@@ -129,6 +135,9 @@ export type GameActionType =
 export interface GameActionPayload {
   place_card: { cardIndex: number };
   ready: {};
+  confirm_placement: {};
+  return_placed_card: {};
+  return_initial_card: {};
   bid_start: { bidAmount: number };
   raise: { bidAmount: number };
   pass: {};

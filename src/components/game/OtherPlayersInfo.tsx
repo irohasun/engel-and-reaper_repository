@@ -61,7 +61,7 @@ export function OtherPlayersInfo({
       {otherPlayers.map((player) => {
         const status = getPlayerStatus(player);
         const isTurnPlayer = player.id === turnPlayerId;
-        const isSelectable = phase === 'resolution' && onSelectPlayer;
+        const isSelectable = phase === 'resolution' && !!onSelectPlayer;
         const isPassed = player.hasPassed && phase === 'bidding';
         
         // 判定フェーズで、自分が判定プレイヤーの場合、カードが残っているプレイヤーを強調表示
@@ -88,9 +88,6 @@ export function OtherPlayersInfo({
                 playerName={player.name}
                 size="sm"
                 isTurn={isHighlighted}
-                phase={phase}
-                highestBidderId={highestBidderId}
-                playerId={player.id}
                 isSelectable={isSelectable}
                 onSelect={isSelectable ? () => onSelectPlayer?.(player.id) : undefined}
               />

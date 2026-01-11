@@ -17,214 +17,218 @@ import { showInterstitialAd, isExpoGo } from '../utils/admob';
 import { getRoomById } from '../services/firestore';
 
 type ResultScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Result'>;
-  route: RouteProp<RootStackParamList, 'Result'>;
+    navigation: NativeStackNavigationProp<RootStackParamList, 'Result'>;
+    route: RouteProp<RootStackParamList, 'Result'>;
 };
 
 export function ResultScreen({ navigation, route }: ResultScreenProps) {
-  const { state } = useGame();
-  const { t } = useLanguage();
-  const { winnerId, winnerName: routeWinnerName, winnerColor: routeWinnerColor, roomId, roomCode: routeRoomCode, mode } = route.params;
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showTestAd, setShowTestAd] = useState(false);
-  const [roomCode, setRoomCode] = useState<string | null>(routeRoomCode || null);
-  const isOnlineMode = mode === 'online';
-  
-  // 勝者情報を取得（route.paramsから取得できればそれを使用、なければstateから取得）
-  const winner = state.players.find((p) => p.id === winnerId);
-  const winnerName = routeWinnerName || winner?.name || t.common.unknown;
-  const winnerColor = routeWinnerColor || winner?.themeColor || 'blue';
-  
-  // オンラインモードの場合、roomCodeを取得
-  useEffect(() => {
-    if (isOnlineMode && roomId && !roomCode) {
-      getRoomById(roomId).then((room) => {
-        if (room) {
-          setRoomCode(room.roomCode);
+    const { state } = useGame();
+    const { t } = useLanguage();
+    const { winnerId, winnerName: routeWinnerName, winnerColor: routeWinnerColor, roomId, roomCode: routeRoomCode, mode } = route.params;
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [showTestAd, setShowTestAd] = useState(false);
+    const [roomCode, setRoomCode] = useState<string | null>(routeRoomCode || null);
+    const isOnlineMode = mode === 'online';
+
+    // 勝者情報を取得（route.paramsから取得できればそれを使用、なければstateから取得）
+    const winner = state.players.find((p) => p.id === winnerId);
+    const winnerName = routeWinnerName || winner?.name || t.common.unknown;
+    const winnerColor = routeWinnerColor || winner?.themeColor || 'blue';
+
+    // オンラインモードの場合、roomCodeを取得
+    useEffect(() => {
+        if (isOnlineMode && roomId && !roomCode) {
+            getRoomById(roomId).then((room) => {
+                if (room) {
+                    setRoomCode(room.roomCode);
+                }
+            }).catch((error) => {
+                console.error('ルーム情報取得エラー:', error);
+            });
         }
-      }).catch((error) => {
-        console.error('ルーム情報取得エラー:', error);
-      });
-    }
-  }, [isOnlineMode, roomId, roomCode]);
-  
-  // プレイヤーカラーマップ
-  const playerColorMap: Record<string, string> = {
-    blue: colors.player.blue,
-    red: colors.player.red,
-    yellow: colors.player.yellow,
-    green: colors.player.green,
-    purple: colors.player.purple,
-    pink: colors.player.pink,
-  };
+    }, [isOnlineMode, roomId, roomCode]);
 
-  // 画面表示時に紙吹雪を発射
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowConfetti(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
+    // プレイヤーカラーマップ
+    const playerColorMap: Record<string, string> = {
+        blue: colors.player.blue,
+        red: colors.player.red,
+        yellow: colors.player.yellow,
+        green: colors.player.green,
+        purple: colors.player.purple,
+        pink: colors.player.pink,
+    };
 
-  // 「Play Again」ボタンが押されたときの処理
-  // オンラインモードの場合はルームに戻る
-  // テストモードの場合は広告を表示してTestSetup画面に遷移
-  const handlePlayAgain = () => {
-    if (isOnlineMode && roomId && roomCode) {
-      // オンラインモードの場合はルームに戻る
-      // ナビゲーションスタックをリセットして、GameScreenやResultScreenをスタックから削除
-      // これにより、前回のゲーム画面が一瞬表示されることを防ぐ
-      navigation.reset({
-        index: 1,
-        routes: [
-          { name: 'Home' },
-          { name: 'Lobby', params: { roomId, roomCode } },
-        ],
-      });
-    } else {
-      // テストモードの場合は広告を表示
-    if (isExpoGo) {
-      // Expo Goの場合はテスト広告モーダルを表示
-      setShowTestAd(true);
-    } else {
-      // 開発ビルド/本番ビルドの場合は実際の広告を表示
-      showInterstitialAd(() => {
-        // 広告が閉じられたらTestSetup画面に遷移
-        navigation.navigate('TestSetup');
-      });
-      }
-    }
-  };
+    // 画面表示時に紙吹雪を発射
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowConfetti(true);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
 
-  // テスト広告が閉じられたときの処理
-  const handleTestAdClose = () => {
-    setShowTestAd(false);
-    // テスト広告が閉じられたらTestSetup画面に遷移
-    navigation.navigate('TestSetup');
-  };
+    // 次の画面に遷移する処理
+    const proceedToNextScreen = () => {
+        if (isOnlineMode && roomId && roomCode) {
+            // オンラインモードの場合はルームに戻る
+            // ナビゲーションスタックをリセットして、GameScreenやResultScreenをスタックから削除
+            // これにより、前回のゲーム画面が一瞬表示されることを防ぐ
+            navigation.reset({
+                index: 1,
+                routes: [
+                    { name: 'Home' },
+                    { name: 'Lobby', params: { roomId, roomCode } },
+                ],
+            });
+        } else {
+            // テストモードの場合はTestSetup画面に遷移
+            navigation.navigate('TestSetup');
+        }
+    };
 
-  return (
-    <LinearGradient
-      colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
-      style={styles.container}
-    >
-      <SafeAreaView style={styles.safeArea}>
-        {/* 紙吹雪エフェクト */}
-        <Confetti active={showConfetti} pieceCount={60} />
-        
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <View
-              style={[
-                styles.winnerColorBadge,
-                { backgroundColor: playerColorMap[winnerColor] },
-              ]}
-            >
-              <Trophy size={96} color={colors.tavern.gold} />
-            </View>
-            <Text style={styles.title}>{t.result.victoryTitle}</Text>
-            <Text style={styles.winnerName}>{winnerName}</Text>
-            <Text style={styles.subtitle}>{t.result.winMessage}</Text>
-          </View>
+    // 「Play Again」ボタンが押されたときの処理
+    // オンラインモードもテストモードも広告を表示してから遷移する
+    const handlePlayAgain = () => {
+        if (isExpoGo) {
+            // Expo Goの場合はテスト広告モーダルを表示
+            setShowTestAd(true);
+        } else {
+            // 開発ビルド/本番ビルドの場合は実際の広告を表示
+            showInterstitialAd(() => {
+                // 広告が閉じられたら次の画面に遷移
+                proceedToNextScreen();
+            });
+        }
+    };
 
-          <View style={styles.buttons}>
-            <Button
-              variant="gold"
-              size="lg"
-              onPress={handlePlayAgain}
-              style={styles.button}
-            >
-              <View style={styles.buttonContent}>
-                <RotateCcw size={20} color={colors.tavern.bg} />
-                <Text style={styles.buttonText}>{t.result.playAgain}</Text>
-              </View>
-            </Button>
+    // テスト広告が閉じられたときの処理
+    const handleTestAdClose = () => {
+        setShowTestAd(false);
+        // テスト広告が閉じられたら次の画面に遷移
+        proceedToNextScreen();
+    };
 
-            <Button
-              variant="wood"
-              size="lg"
-              onPress={() => navigation.navigate('Home')}
-              style={styles.button}
-            >
-              <View style={styles.buttonContent}>
-                <Home size={20} color={colors.tavern.cream} />
-                <Text style={[styles.buttonText, styles.buttonTextWhite]}>{t.common.home}</Text>
-              </View>
-            </Button>
-          </View>
-        </View>
-      </SafeAreaView>
+    return (
+        <LinearGradient
+            colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}
+            style={styles.container}
+        >
+            <SafeAreaView style={styles.safeArea}>
+                {/* 紙吹雪エフェクト */}
+                <Confetti active={showConfetti} pieceCount={60} />
 
-      {/* テスト広告モーダル（Expo Goの場合のみ表示） */}
-      <TestAdModal visible={showTestAd} onClose={handleTestAdClose} />
-    </LinearGradient>
-  );
+                <View style={styles.content}>
+                    <View style={styles.header}>
+                        <View
+                            style={[
+                                styles.winnerColorBadge,
+                                { backgroundColor: playerColorMap[winnerColor] },
+                            ]}
+                        >
+                            <Trophy size={96} color={colors.tavern.gold} />
+                        </View>
+                        <Text style={styles.title}>{t.result.victoryTitle}</Text>
+                        <Text style={styles.winnerName}>{winnerName}</Text>
+                        <Text style={styles.subtitle}>{t.result.winMessage}</Text>
+                    </View>
+
+                    <View style={styles.buttons}>
+                        <Button
+                            variant="gold"
+                            size="lg"
+                            onPress={handlePlayAgain}
+                            style={styles.button}
+                        >
+                            <View style={styles.buttonContent}>
+                                <RotateCcw size={20} color={colors.tavern.bg} />
+                                <Text style={styles.buttonText}>{t.result.playAgain}</Text>
+                            </View>
+                        </Button>
+
+                        <Button
+                            variant="wood"
+                            size="lg"
+                            onPress={() => navigation.navigate('Home')}
+                            style={styles.button}
+                        >
+                            <View style={styles.buttonContent}>
+                                <Home size={20} color={colors.tavern.cream} />
+                                <Text style={[styles.buttonText, styles.buttonTextWhite]}>{t.common.home}</Text>
+                            </View>
+                        </Button>
+                    </View>
+                </View>
+            </SafeAreaView>
+
+            {/* テスト広告モーダル（Expo Goの場合のみ表示） */}
+            <TestAdModal visible={showTestAd} onClose={handleTestAdClose} />
+        </LinearGradient>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-around',
-    padding: spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  winnerColorBadge: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: colors.tavern.gold,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  title: {
-    fontSize: fontSizes['3xl'],
-    color: colors.tavern.gold,
-    fontWeight: 'bold',
-  },
-  winnerName: {
-    fontSize: fontSizes['2xl'],
-    color: colors.tavern.cream,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: fontSizes.xl,
-    color: colors.tavern.cream,
-    textAlign: 'center',
-  },
-  buttons: {
-    gap: spacing.md,
-  },
-  button: {
-    width: '100%',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  buttonText: {
-    fontSize: fontSizes.lg,
-    fontWeight: '600',
-    color: colors.tavern.bg,
-  },
-  buttonTextWhite: {
-    color: colors.tavern.cream,
-  },
+    container: {
+        flex: 1,
+    },
+    safeArea: {
+        flex: 1,
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'space-around',
+        padding: spacing.lg,
+    },
+    header: {
+        alignItems: 'center',
+        gap: spacing.md,
+    },
+    winnerColorBadge: {
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 4,
+        borderColor: colors.tavern.gold,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.5,
+        shadowRadius: 16,
+        elevation: 16,
+    },
+    title: {
+        fontSize: fontSizes['3xl'],
+        color: colors.tavern.gold,
+        fontWeight: 'bold',
+    },
+    winnerName: {
+        fontSize: fontSizes['2xl'],
+        color: colors.tavern.cream,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: fontSizes.xl,
+        color: colors.tavern.cream,
+        textAlign: 'center',
+    },
+    buttons: {
+        gap: spacing.md,
+    },
+    button: {
+        width: '100%',
+    },
+    buttonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+    },
+    buttonText: {
+        fontSize: fontSizes.lg,
+        fontWeight: '600',
+        color: colors.tavern.bg,
+    },
+    buttonTextWhite: {
+        color: colors.tavern.cream,
+    },
 });

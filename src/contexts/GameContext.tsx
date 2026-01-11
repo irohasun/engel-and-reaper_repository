@@ -359,16 +359,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const remainingToReveal = state.cardsToReveal - 1;
 
       if (remainingToReveal === 0) {
-        const updatedPlayersWithWin = updatedPlayers.map((p) =>
+        // 一時的に勝利数を加算したプレイヤーリストを作成（勝利条件チェック用）
+        const tempPlayersWithWin = updatedPlayers.map((p) =>
           p.id === state.highestBidderId ? { ...p, wins: p.wins + 1 } : p
         );
 
-        const winner = checkWinCondition({ ...state, players: updatedPlayersWithWin });
+        const winner = checkWinCondition({ ...state, players: tempPlayersWithWin });
 
+        // ゲーム終了の場合のみ、勝利数を即座に更新
         if (winner) {
           return {
             ...state,
-            players: updatedPlayersWithWin,
+            players: tempPlayersWithWin,
             revealedCards: newRevealedCards,
             cardsToReveal: 0,
             phase: 'game_over',
@@ -381,9 +383,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           };
         }
 
+        // ラウンド継続の場合は、勝利数を更新せず、highestBidderIdを保持して次のラウンドで更新
         return {
           ...state,
-          players: updatedPlayersWithWin,
+          players: updatedPlayers, // wins は更新しない
           revealedCards: newRevealedCards,
           cardsToReveal: 0,
           phase: 'round_end',

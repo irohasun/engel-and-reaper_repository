@@ -169,18 +169,27 @@ export function checkWinCondition(state: GameState): string | null {
 }
 
 export function prepareNextRound(state: GameState): Partial<GameState> {
+  // 前ラウンドの勝者（highestBidderId）の勝利数をインクリメント
   const updatedPlayers = state.players.map(player => {
     if (!player.isAlive) return player;
+
     const returnedCards = player.stack.map(card => ({
       ...card,
       isRevealed: false,
     }));
+
+    // 前ラウンドで勝利したプレイヤーの場合は、ここで勝利数を加算
+    const newWins = player.id === state.highestBidderId
+      ? player.wins + 1
+      : player.wins;
+
     return {
       ...player,
       hand: [...player.hand, ...returnedCards],
       stack: [],
       isReady: false,
       hasPassed: false,
+      wins: newWins,
     };
   });
 
