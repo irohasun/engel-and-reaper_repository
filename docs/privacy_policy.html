@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angel & Reaper - プライバシーポリシー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #2C1810;
+            --paper-color: #E8D5B5;
+            --text-color: #2C1810;
+            --accent-color: #C5A059;
+            --secondary-text: #5D4037;
+            --white-alpha: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image:
+                linear-gradient(rgba(44, 24, 16, 0.9), rgba(44, 24, 16, 0.9)),
+                url('../screenshots/1_home.png');
+            background-size: cover;
+            background-attachment: fixed;
+            font-family: 'Noto Sans JP', sans-serif;
+            color: var(--text-color);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            background-image:
+                radial-gradient(#C5A059 15%, transparent 16%),
+                radial-gradient(#C5A059 15%, transparent 16%);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 80px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            color: var(--accent-color);
+            text-shadow: 4px 4px 10px rgba(0, 0, 0, 0.8);
+            letter-spacing: 2px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #E8D5B5;
+            margin-top: 10px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .content-card {
+            background-color: var(--white-alpha);
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            margin-bottom: 60px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: var(--text-color);
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid var(--accent-color);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+        }
+
+        p {
+            margin-bottom: 1.5em;
+        }
+
+        ul {
+            margin-bottom: 1.5em;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 0.5em;
+        }
+
+        .email-link {
+            color: var(--secondary-text);
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: rgba(232, 213, 181, 0.6);
+            padding-bottom: 40px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 30px;
+            color: #E8D5B5;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            .container {
+                padding: 40px 15px;
+            }
+
+            .content-card {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-pattern"></div>
+
+    <div class="container">
+        <header>
+            <h1>Angel & Reaper</h1>
+            <div class="subtitle">PRIVACY POLICY</div>
+        </header>
+
+        <div class="content-card">
+            <h2>1. はじめに</h2>
+            <p>
+                本プライバシーポリシーは、Kuriyama Koya（以下「開発者」といいます）が提供するスマートフォンアプリ「Angel &
+                Reaper」（以下「本アプリ」といいます）における利用者情報の取り扱いについて定めたものです。
+            </p>
+
+            <h2>2. 収集する情報</h2>
+            <p>本アプリでは、以下の情報を収集する場合があります。</p>
+            <ul>
+                <li>
+                    <strong>利用状況データ:</strong> アプリの利用状況、クラッシュレポートなどの技術的な情報（Firebase Analytics等のツールを使用する場合があります）。
+                </li>
+                <li>
+                    <strong>ゲームデータ:</strong> オンライン対戦機能を提供するために、ゲームの進行状況、ルーム情報などを一時的にクラウド（Firebase Firestore）に保存します。
+                </li>
+            </ul>
+            <p>
+                <strong>※ 個人情報の非取得について:</strong><br>
+                本アプリは、氏名、住所、電話番号、メールアドレス、クレジットカード番号などの、個人を特定できる情報の入力・収集は一切行いません。ユーザー認証にはFirebase
+                Authenticationの匿名認証（Anonymous Auth）を使用しており、個人情報と紐付かない形で識別子を管理しています。
+            </p>
+
+            <h2>3. 情報の利用目的</h2>
+            <p>収集した情報は、以下の目的で利用します。</p>
+            <ul>
+                <li>本アプリのサービス（オンライン対戦機能など）の提供・維持・管理のため</li>
+                <li>不具合の修正やアプリの品質向上のため</li>
+                <li>不正利用の防止のため</li>
+            </ul>
+
+            <h2>4. 第三者への提供</h2>
+            <p>
+                開発者は、法令に基づく場合を除き、取得した情報を第三者に提供することはありません。ただし、アプリの機能提供のために利用している外部サービス（Firebaseなど）には、サービス提供に必要な範囲で情報が送信される場合があります。
+            </p>
+
+            <h2>5. 外部サービス・ツール</h2>
+            <p>本アプリでは、アプリの基盤として以下の外部サービスを利用しています。</p>
+            <ul>
+                <li>
+                    <strong>Google Firebase</strong> (Authentication, Firestore, Cloud Functions)<br>
+                    Googleのプライバシーポリシーについては、<a href="https://policies.google.com/privacy" target="_blank"
+                        class="email-link">Google プライバシーポリシー</a>をご確認ください。
+                </li>
+            </ul>
+
+            <h2>6. プライバシーポリシーの変更</h2>
+            <p>
+                開発者は、必要に応じて本プライバシーポリシーを変更することがあります。変更した場合は、本ページ等の適切な場所で周知します。
+            </p>
+
+            <h2>7. お問い合わせ</h2>
+            <p>
+                本プライバシーポリシーに関するご質問や、アプリに関するお問い合わせは、以下のメールアドレスまでご連絡ください。
+            </p>
+            <p style="text-align: center; font-weight: bold; margin-top: 20px;">
+                <a href="mailto:chikuwa196@gmail.com" class="email-link"
+                    style="font-size: 1.2rem;">chikuwa196@gmail.com</a>
+            </p>
+        </div>
+
+        <a href="index.html" class="back-link">← サポートページに戻る</a>
+
+        <footer>
+            <div style="margin-bottom: 10px;">Angel & Reaper</div>
+            &copy; 2026 Kuriyama Koya. All Rights Reserved.
+        </footer>
+    </div>
+</body>
+
+</html>
