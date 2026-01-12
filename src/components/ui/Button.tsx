@@ -43,6 +43,7 @@ export function Button({
         variant === 'wood' && styles.textWood,
         variant === 'ghost' && styles.textGhost,
       ]}
+      // @ts-ignore
       textAlignVertical="center"
     >
       {children}

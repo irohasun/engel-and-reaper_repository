@@ -34,7 +34,7 @@ export function ResolutionResultModal({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -93,7 +93,7 @@ export function ResolutionResultModal({
   const Icon = isSuccess ? Angel : Skull;
   const iconColor = isSuccess ? colors.tavern.gold : colors.player.red;
   const title = isSuccess ? t.game.resolution.successTitle : t.game.resolution.failTitle;
-  const gradientColors = isSuccess 
+  const gradientColors = isSuccess
     ? [`${colors.tavern.wood}E6`, `${colors.tavern.bg}E6`]
     : [`#3a0a0aE6`, `#1a0505E6`]; // 失敗時は赤っぽい背景
 
@@ -109,15 +109,15 @@ export function ResolutionResultModal({
         ]}
       >
         <LinearGradient
-          colors={gradientColors}
+          colors={gradientColors as [string, string, ...string[]]}
           style={[styles.content, !isSuccess && styles.contentFail]}
         >
           <View style={styles.iconContainer}>
             <Icon size={64} color={iconColor} />
           </View>
-          
+
           <Text style={[styles.title, !isSuccess && styles.titleFail]}>{title}</Text>
-          
+
           <View style={styles.messageContainer}>
             {isSuccess ? (
               <Text style={styles.message}>
@@ -129,7 +129,7 @@ export function ResolutionResultModal({
               </Text>
             )}
           </View>
-          
+
           <Text style={styles.tapHint}>{t.game.resolution.tapToDismiss}</Text>
         </LinearGradient>
       </Animated.View>

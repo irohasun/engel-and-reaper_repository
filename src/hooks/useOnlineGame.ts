@@ -15,11 +15,11 @@ import {
   sendHeartbeat,
 } from '../services/firestore';
 import type { GameState as FirestoreGameState, RoomPlayer } from '../types/firebase';
-import type { 
-  GameState as LocalGameState, 
-  GameAction, 
-  Player, 
-  Card, 
+import type {
+  GameState as LocalGameState,
+  GameAction,
+  Player,
+  Card,
   ThemeColor,
   RevealedCard,
   LogEntry,
@@ -88,7 +88,7 @@ function convertStackToCards(
   const revealedCount = resolution?.revealedCards.filter(
     r => r.playerIndex === playerIndex
   ).length || 0;
-  
+
   return stack.map((cardType, idx) => ({
     id: `${roomId}-${userId}-stack-${idx}`,
     type: cardType,
@@ -145,21 +145,21 @@ function convertFirestoreToLocalGameState(
   roomId: string,
   logs: LogEntry[] // 追加
 ): LocalGameState {
-  
+
   // プレイヤー情報を変換
   const players: Player[] = firestoreState.players.map((p, index) => {
     const nicknameInfo = nicknameMap[p.userId];
     const themeColor = THEME_COLORS[nicknameInfo?.colorIndex ?? index % 6];
-    
+
     const hand = convertHandToCards(p.userId, p.hand, roomId);
     const stack = convertStackToCards(
-      p.userId, 
-      index, 
-      p.stack, 
-      roomId, 
+      p.userId,
+      index,
+      p.stack,
+      roomId,
       firestoreState.resolution
     );
-    
+
     return {
       id: p.userId,
       name: nicknameInfo?.nickname || `Player ${index + 1}`,
@@ -176,20 +176,20 @@ function convertFirestoreToLocalGameState(
 
   // プレイヤーIDリスト
   const playerIds = firestoreState.players.map(p => p.userId);
-  
+
   // 現在の手番プレイヤーID
   const turnPlayerId = players[firestoreState.currentPlayerIndex]?.id || null;
-  
+
   // 最高入札者ID
-  const highestBidderId = firestoreState.bidding 
-    ? players[firestoreState.bidding.highestBidderIndex]?.id || null 
+  const highestBidderId = firestoreState.bidding
+    ? players[firestoreState.bidding.highestBidderIndex]?.id || null
     : null;
-  
+
   // 入札開始者ID
-  const bidStarterId = firestoreState.bidding 
-    ? players[firestoreState.bidding.startPlayerIndex]?.id || null 
+  const bidStarterId = firestoreState.bidding
+    ? players[firestoreState.bidding.startPlayerIndex]?.id || null
     : null;
-  
+
   // reaperOwnerId: 死神を出したプレイヤーのID
   // - 他人の死神で失敗: penalty.revealedDevilPlayerIndex
   // - 自分の死神で失敗: highestBidderId（revealedDevilPlayerIndexはnull）
@@ -203,7 +203,7 @@ function convertFirestoreToLocalGameState(
       reaperOwnerId = highestBidderId;
     }
   }
-  
+
   // めくられたカード情報
   const revealedCards: RevealedCard[] = firestoreState.resolution?.revealedCards.map(
     ({ playerIndex, card }, idx) => ({
@@ -215,21 +215,21 @@ function convertFirestoreToLocalGameState(
       },
     })
   ) || [];
-  
+
   // めくり担当者（最高入札者）
-  const revealingPlayerId = firestoreState.resolution 
-    ? players[firestoreState.resolution.bidderIndex]?.id || null 
+  const revealingPlayerId = firestoreState.resolution
+    ? players[firestoreState.resolution.bidderIndex]?.id || null
     : null;
-  
+
   // 残りめくる枚数
-  const cardsToReveal = firestoreState.resolution 
-    ? firestoreState.resolution.targetBid - firestoreState.resolution.revealedCount 
+  const cardsToReveal = firestoreState.resolution
+    ? firestoreState.resolution.targetBid - firestoreState.resolution.revealedCount
     : 0;
-  
+
   // turnStartStackCounts: placementフェーズでのターン開始時のスタック枚数
   // Firestoreから受け取った値を優先的に使用
   let turnStartStackCounts: Record<string, number> = {};
-  
+
   if (firestoreState.turnStartStackCounts) {
     // サーバーから受け取った値をそのまま使用
     turnStartStackCounts = { ...firestoreState.turnStartStackCounts };
@@ -273,10 +273,10 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   const [error, setError] = useState<Error | null>(null);
   const [gameState, setGameState] = useState<LocalGameState | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]); // 追加
-  
+
   // ニックネームマップを保持
   const [nicknameMap, setNicknameMap] = useState<PlayerNicknameMap>({});
-  
+
   // playerIdからindexへの変換用マップ
   const playerIndexMapRef = useRef<Map<string, number>>(new Map());
 
@@ -307,10 +307,7 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
     if (!roomId) return;
 
     const unsubscribe = subscribeToGameLogs(roomId, (fetchedLogs) => {
-      console.log('[useOnlineGame] Logs updated:', fetchedLogs.length, 'logs');
-      if (fetchedLogs.length > 0) {
-        console.log('[useOnlineGame] Latest log:', fetchedLogs[fetchedLogs.length - 1]);
-      }
+
       setLogs(fetchedLogs as LogEntry[]);
     });
 
@@ -337,23 +334,9 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
           newPlayerIndexMap.set(p.userId, index);
         });
         playerIndexMapRef.current = newPlayerIndexMap;
-        
-        // デバッグログ: 状態更新前のプレイヤー情報を確認
-        if (user?.userId) {
-          const currentPlayerIndex = firestoreGameState.players.findIndex(p => p.userId === user.userId);
-          if (currentPlayerIndex >= 0) {
-            const currentPlayer = firestoreGameState.players[currentPlayerIndex];
-            console.log('[useOnlineGame] Game state updated', {
-              phase: firestoreGameState.phase,
-              playerIndex: currentPlayerIndex,
-              handLength: currentPlayer.hand.length,
-              stackLength: currentPlayer.stack.length,
-              hand: currentPlayer.hand,
-              stack: currentPlayer.stack,
-            });
-          }
-        }
-        
+
+
+
         // Firestore状態をローカル状態に変換
         const localGameState = convertFirestoreToLocalGameState(
           firestoreGameState,
@@ -361,7 +344,7 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
           roomId,
           logs
         );
-        
+
         setGameState(localGameState);
         setLoading(false);
         setError(null);
@@ -405,24 +388,14 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
       switch (action.type) {
         // ラウンド準備: 初期カード配置
         case 'PLACE_INITIAL_CARD':
-          await sendGameAction(roomId, user.userId, 'place_card', { 
-            cardIndex: action.cardIndex 
+          await sendGameAction(roomId, user.userId, 'place_card', {
+            cardIndex: action.cardIndex
           });
           break;
 
         // ラウンド準備: カードを手札に戻す
         case 'RETURN_INITIAL_CARD':
-          console.log('[useOnlineGame] Dispatching RETURN_INITIAL_CARD action', {
-            roomId,
-            userId: user.userId,
-          });
-          try {
-            await sendGameAction(roomId, user.userId, 'return_initial_card', {});
-            console.log('[useOnlineGame] RETURN_INITIAL_CARD action sent successfully');
-          } catch (error) {
-            console.error('[useOnlineGame] Error sending RETURN_INITIAL_CARD action', error);
-            throw error;
-          }
+          await sendGameAction(roomId, user.userId, 'return_initial_card', {});
           break;
 
         // 準備完了
@@ -432,8 +405,8 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
 
         // 配置フェーズ: カード配置
         case 'PLACE_CARD':
-          await sendGameAction(roomId, user.userId, 'place_card', { 
-            cardIndex: action.cardIndex 
+          await sendGameAction(roomId, user.userId, 'place_card', {
+            cardIndex: action.cardIndex
           });
           break;
 
@@ -449,15 +422,15 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
 
         // 入札開始
         case 'START_BIDDING':
-          await sendGameAction(roomId, user.userId, 'bid_start', { 
-            bidAmount: action.amount 
+          await sendGameAction(roomId, user.userId, 'bid_start', {
+            bidAmount: action.amount
           });
           break;
 
         // レイズ
         case 'RAISE_BID':
-          await sendGameAction(roomId, user.userId, 'raise', { 
-            bidAmount: action.amount 
+          await sendGameAction(roomId, user.userId, 'raise', {
+            bidAmount: action.amount
           });
           break;
 
@@ -473,16 +446,16 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
           if (targetPlayerIndex === undefined) {
             throw new Error(`Player not found: ${action.targetPlayerId}`);
           }
-          await sendGameAction(roomId, user.userId, 'reveal_card', { 
-            targetPlayerIndex 
+          await sendGameAction(roomId, user.userId, 'reveal_card', {
+            targetPlayerIndex
           });
           break;
         }
 
         // ペナルティカード選択
         case 'SELECT_PENALTY_CARD':
-          await sendGameAction(roomId, user.userId, 'select_penalty_card', { 
-            cardIndex: action.cardIndex 
+          await sendGameAction(roomId, user.userId, 'select_penalty_card', {
+            cardIndex: action.cardIndex
           });
           break;
 

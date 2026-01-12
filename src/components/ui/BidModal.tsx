@@ -32,8 +32,8 @@ export function BidModal({
   useEffect(() => {
     if (visible) {
       // モーダルが開いたら、最小値または現在の入札+1を初期値に設定
-      const initialValue = mode === 'start' 
-        ? minAmount 
+      const initialValue = mode === 'start'
+        ? minAmount
         : (currentBid ? currentBid + 1 : minAmount);
       setAmount(initialValue.toString());
     }
@@ -103,13 +103,13 @@ export function BidModal({
               styles.controlButton,
               pressed && styles.controlButtonPressed,
               parseInt(amount, 10) <= minAmount ||
-              (mode === 'raise' && currentBid && parseInt(amount, 10) <= currentBid + 1)
+                (mode === 'raise' && currentBid && parseInt(amount, 10) <= currentBid + 1)
                 ? styles.controlButtonDisabled
                 : null,
             ]}
             disabled={
-              parseInt(amount, 10) <= minAmount ||
-              (mode === 'raise' && currentBid && parseInt(amount, 10) <= currentBid + 1)
+              Boolean(parseInt(amount, 10) <= minAmount ||
+                (mode === 'raise' && currentBid !== undefined && parseInt(amount, 10) <= currentBid + 1))
             }
           >
             <Text style={styles.controlButtonText}>−</Text>
@@ -125,6 +125,8 @@ export function BidModal({
             keyboardType="number-pad"
             selectTextOnFocus
             maxLength={3}
+            editable={true}
+
           />
 
           <Pressable
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   hint: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.base,
     color: colors.tavern.cream,
     opacity: 0.7,
     textAlign: 'center',

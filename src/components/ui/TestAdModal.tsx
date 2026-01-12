@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   adText: {
-    fontSize: fontSizes.md,
+    fontSize: fontSizes.base,
     color: colors.tavern.cream,
     textAlign: 'center',
     opacity: 0.6,

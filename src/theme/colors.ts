@@ -9,6 +9,8 @@ export const colors = {
     parchment: '#f5deb3',
     cream: '#f5f5dc',
     ink: '#1a1a1a',
+    green: '#2e5a3a',
+    red: '#8b2500',
   },
   player: {
     blue: '#1e3a5f',

@@ -39,7 +39,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
   const { roomId, roomCode } = route.params;
   const { user } = useAuth();
   const { t, language } = useLanguage();
-  
+
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,22 +49,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
   const currentPlayer = players.find(p => p.userId === user?.userId);
   const allReady = players.length >= 2 && players.every(p => p.isReady);
 
-  // デバッグログ
-  useEffect(() => {
-    if (room && players.length > 0) {
-      console.log('[Lobby Debug]', {
-        roomStatus: room.status,
-        actionLoading,
-        isHost,
-        currentPlayer: currentPlayer ? {
-          userId: currentPlayer.userId,
-          isReady: currentPlayer.isReady,
-        } : null,
-        playersCount: players.length,
-        allReady,
-      });
-    }
-  }, [room?.status, actionLoading, isHost, currentPlayer?.isReady, players.length, allReady]);
+
 
   // ルームとプレイヤー情報をリアルタイム監視
   useEffect(() => {
@@ -175,7 +160,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
       Alert.alert(t.common.error, 'ゲーム中は退出できません');
       return;
     }
-    
+
     Alert.alert(
       t.lobby.leaveRoom,
       isHost ? t.lobby.hostLeaveConfirm : t.lobby.leaveConfirm,
@@ -263,7 +248,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
               {players.map((player, index) => {
                 const themeColor = THEME_COLORS[player.colorIndex];
                 const isCurrentUser = player.userId === user?.userId;
-                
+
                 return (
                   <View
                     key={player.userId}
@@ -278,7 +263,7 @@ export function Lobby({ navigation, route }: LobbyProps) {
                         { backgroundColor: colorBgs[themeColor] },
                       ]}
                     />
-                    
+
                     <View style={styles.playerInfo}>
                       <View style={styles.playerNameRow}>
                         <Text style={styles.playerName}>

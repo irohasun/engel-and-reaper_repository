@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angel & Reaper - サポート</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #2C1810;
+            --paper-color: #E8D5B5;
+            --text-color: #2C1810;
+            --accent-color: #C5A059;
+            --secondary-text: #5D4037;
+            --white-alpha: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image:
+                linear-gradient(rgba(44, 24, 16, 0.9), rgba(44, 24, 16, 0.9)),
+                url('./screenshots/1_home.png');
+            /* Fallback or texture */
+            background-size: cover;
+            background-attachment: fixed;
+            font-family: 'Noto Sans JP', sans-serif;
+            color: var(--text-color);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* Background Pattern */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            background-image:
+                radial-gradient(#C5A059 15%, transparent 16%),
+                radial-gradient(#C5A059 15%, transparent 16%);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header Area */
+        header {
+            text-align: center;
+            margin-bottom: 80px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            color: var(--accent-color);
+            text-shadow: 4px 4px 10px rgba(0, 0, 0, 0.8);
+            letter-spacing: 2px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #E8D5B5;
+            margin-top: 10px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Content Card */
+        .content-card {
+            background-color: var(--white-alpha);
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            margin-bottom: 60px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        section {
+            margin-bottom: 50px;
+        }
+
+        section:last-child {
+            margin-bottom: 0;
+        }
+
+        h2 {
+            font-size: 2rem;
+            color: var(--text-color);
+            margin-bottom: 30px;
+            display: inline-block;
+            border-bottom: 4px solid var(--accent-color);
+            padding-bottom: 5px;
+        }
+
+        /* Contact Box */
+        .contact-box {
+            background: var(--text-color);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            color: var(--paper-color);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .contact-box:hover {
+            transform: translateY(-5px);
+        }
+
+        .contact-box div {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .email-link {
+            display: inline-block;
+            font-size: 2rem;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s;
+            word-break: break-all;
+        }
+
+        .email-link:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        /* FAQ Styling */
+        .faq-item {
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 25px;
+        }
+
+        .faq-question {
+            font-weight: 900;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .faq-question::before {
+            content: 'Q.';
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-right: 10px;
+            font-weight: 900;
+        }
+
+        .faq-answer {
+            color: var(--secondary-text);
+            padding-left: 40px;
+        }
+
+        /* Floating Screenshots Styling */
+        .screenshot {
+            position: absolute;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            z-index: 0;
+            transition: transform 0.3s ease, z-index 0.3s;
+            max-width: 260px;
+            border: 4px solid #1a1a1a;
+        }
+
+        .screenshot:hover {
+            transform: scale(1.05) rotate(0deg) !important;
+            z-index: 10;
+        }
+
+        /* Header Images */
+        .header-img-1 {
+            top: 20px;
+            left: -180px;
+            transform: rotate(-15deg);
+            width: 220px;
+        }
+
+        .header-img-2 {
+            top: 40px;
+            right: -160px;
+            transform: rotate(15deg);
+            width: 220px;
+        }
+
+        /* Middle Images */
+        .mid-img-1 {
+            top: 400px;
+            left: -200px;
+            transform: rotate(8deg);
+            width: 240px;
+        }
+
+        .mid-img-2 {
+            top: 700px;
+            right: -180px;
+            transform: rotate(-10deg);
+            width: 240px;
+        }
+
+        /* Bottom Images */
+        .bot-img-1 {
+            bottom: -50px;
+            left: -100px;
+            transform: rotate(-6deg);
+            width: 200px;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: rgba(232, 213, 181, 0.6);
+            padding-bottom: 40px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .screenshot {
+                opacity: 0.4;
+                /* Fade out side images on smaller screens so text is readable */
+                z-index: -1;
+            }
+
+            .header-img-1 {
+                left: 20px;
+                top: 100px;
+                opacity: 0.1;
+            }
+
+            .header-img-2 {
+                right: 20px;
+                top: 100px;
+                opacity: 0.1;
+            }
+
+            .mid-img-1 {
+                left: -50px;
+            }
+
+            .mid-img-2 {
+                right: -50px;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .container {
+                padding: 40px 15px;
+            }
+
+            .content-card {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .email-link {
+                font-size: 1.4rem;
+            }
+
+            /* Hide floating images on mobile to keep it clean, 
+               instead show inline images if needed or keep it simple */
+            .screenshot {
+                display: none;
+            }
+
+            /* Add a showcase section for mobile */
+            .mobile-showcase {
+                display: flex;
+                overflow-x: auto;
+                gap: 15px;
+                padding: 20px 0;
+                margin-bottom: 30px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .mobile-showcase img {
+                height: 300px;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                flex-shrink: 0;
+            }
+        }
+
+        @media (min-width: 801px) {
+            .mobile-showcase {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-pattern"></div>
+
+    <div class="container">
+
+        <!-- Decoration Images (Desktop) -->
+        <img src="./screenshots/1_home.png" class="screenshot header-img-1" alt="App Screen">
+        <img src="./screenshots/4_playing.png" class="screenshot header-img-2" alt="App Screen">
+        <img src="./screenshots/5_succes.png" class="screenshot mid-img-1" alt="App Screen">
+        <img src="./screenshots/6_result.png" class="screenshot mid-img-2" alt="App Screen">
+        <img src="./screenshots/2_room_create.png" class="screenshot bot-img-1" alt="App Screen">
+
+        <header>
+            <h1>Angel & Reaper</h1>
+            <div class="subtitle">SUPPORT & FAQ</div>
+        </header>
+
+        <!-- Mobile Image Scroll (Visible only on mobile) -->
+        <div class="mobile-showcase">
+            <img src="./screenshots/1_home.png" alt="Home">
+            <img src="./screenshots/4_playing.png" alt="Playing">
+            <img src="./screenshots/5_succes.png" alt="Success">
+            <img src="./screenshots/6_result.png" alt="Result">
+        </div>
+
+        <div class="content-card">
+            <section>
+                <h2>Contact</h2>
+                <p>
+                    「Angel & Reaper」をご利用いただきありがとうございます。<br>
+                    ご不明な点やバグの報告、機能のご要望などがございましたら、<br>
+                    下記メールアドレスまでお気軽にお問い合わせください。
+                </p>
+                <div class="contact-box">
+                    <div>Email Support</div>
+                    <a href="mailto:chikuwa196@gmail.com" class="email-link">chikuwa196@gmail.com</a>
+                </div>
+            </section>
+
+            <section>
+                <h2>F.A.Q</h2>
+
+                <div class="faq-item">
+                    <div class="faq-question">このアプリは無料で遊べますか？</div>
+                    <div class="faq-answer">
+                        はい、すべての機能を無料でご利用いただけます。プレイ回数などの制限もありません。
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">友達とオンラインで遊ぶ方法は？</div>
+                    <div class="faq-answer">
+                        ホーム画面から「Create Room」を選び、4桁の合言葉を作成して友達に伝えてください。友達は「Join Room」からその合言葉を入力することで、同じルームに参加できます。
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">1人でも遊べますか？</div>
+                    <div class="faq-answer">
+                        現在は対人戦（2人〜6人）専用のゲームとなっています。「Test Mode」を使えば、1台のスマホを回して友達と遊ぶことも可能です。
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">Android版はありますか？</div>
+                    <div class="faq-answer">
+                        現在iOS版のみの提供となっております。Android版の開発も検討中です。
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <div style="margin-bottom: 10px;">Angel & Reaper</div>
+            &copy; 2026 Kuriyama Koya. All Rights Reserved.
+        </footer>
+    </div>
+</body>
+
+</html>

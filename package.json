@@ -4,11 +4,15 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "capture-screenshots": "node screenshots/marketing/capture-screenshots.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",
@@ -38,6 +42,7 @@
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@types/react": "~19.1.10",
+    "puppeteer": "^24.34.0",
     "typescript": "~5.9.2"
   }
 }

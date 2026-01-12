@@ -57,7 +57,7 @@ export const createRoom = async (
     functions,
     'createRoom'
   );
-  
+
   const result = await createRoomFn({ nickname, maxPlayers });
   return result.data;
 };
@@ -73,7 +73,7 @@ export const joinRoom = async (
     functions,
     'joinRoom'
   );
-  
+
   const result = await joinRoomFn({ roomCode, nickname });
   return result.data;
 };
@@ -86,7 +86,7 @@ export const leaveRoom = async (roomId: string): Promise<void> => {
     functions,
     'leaveRoom'
   );
-  
+
   await leaveRoomFn({ roomId });
 };
 
@@ -98,7 +98,7 @@ export const startGame = async (roomId: string): Promise<StartGameResponse> => {
     functions,
     'startGame'
   );
-  
+
   const result = await startGameFn({ roomId });
   return result.data;
 };
@@ -108,11 +108,11 @@ export const startGame = async (roomId: string): Promise<StartGameResponse> => {
  */
 export const getRoomById = async (roomId: string): Promise<Room | null> => {
   const roomDoc = await getDoc(doc(firestore, 'rooms', roomId));
-  
+
   if (!roomDoc.exists()) {
     return null;
   }
-  
+
   return roomDoc.data() as Room;
 };
 
@@ -143,7 +143,7 @@ export const getRoomPlayers = async (roomId: string): Promise<RoomPlayer[]> => {
   const playersSnapshot = await getDocs(
     collection(firestore, 'rooms', roomId, 'players')
   );
-  
+
   return playersSnapshot.docs.map(doc => doc.data() as RoomPlayer);
 };
 
@@ -198,11 +198,11 @@ export const sendHeartbeat = async (
  */
 export const getGameState = async (roomId: string): Promise<GameState | null> => {
   const gameStateDoc = await getDoc(doc(firestore, 'gameStates', roomId));
-  
+
   if (!gameStateDoc.exists()) {
     return null;
   }
-  
+
   return gameStateDoc.data() as GameState;
 };
 
@@ -239,10 +239,10 @@ export const subscribeToGameLogs = (
     const logs = snapshot.docs.map(doc => {
       const data = doc.data();
       // timestampをDateオブジェクトに変換
-      const timestamp = data.timestamp instanceof Timestamp 
-        ? data.timestamp.toDate() 
+      const timestamp = data.timestamp instanceof Timestamp
+        ? data.timestamp.toDate()
         : new Date();
-        
+
       return {
         id: doc.id,
         ...data,
@@ -275,21 +275,9 @@ export const sendGameAction = async <T extends GameActionType>(
     timestamp: serverTimestamp(),
     processed: false,
   };
-  
-  console.log('[sendGameAction] Sending game action', {
-    actionId: actionRef.id,
-    roomId,
-    userId,
-    type,
-    payload,
-  });
-  
+
   try {
     await setDoc(actionRef, actionData);
-    console.log('[sendGameAction] Game action sent successfully', {
-      actionId: actionRef.id,
-      type,
-    });
   } catch (error) {
     console.error('[sendGameAction] Error sending game action', {
       actionId: actionRef.id,
@@ -314,13 +302,13 @@ export const findRoomByCode = async (roomCode: string): Promise<Room | null> => 
     where('status', '==', 'waiting'),
     limit(1)
   );
-  
+
   const snapshot = await getDocs(q);
-  
+
   if (snapshot.empty) {
     return null;
   }
-  
+
   return snapshot.docs[0].data() as Room;
 };
 

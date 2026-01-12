@@ -29,7 +29,7 @@ const cardSizes = {
   lg: { width: 90, height: 128 }, // プレイマット縮小に合わせて約20%縮小（112*0.8=90, 160*0.8=128）
 };
 
-const colorGradients: Record<ThemeColor, string[]> = {
+const colorGradients: Record<ThemeColor, readonly [string, string, ...string[]]> = {
   blue: [colors.player.blue, colors.playerDark.blue],
   red: [colors.player.red, colors.playerDark.red],
   yellow: [colors.player.yellow, colors.playerDark.yellow],
@@ -49,7 +49,7 @@ export function Card({
 }: CardProps) {
   const showFace = isRevealed || card?.isRevealed;
   const dimensions = cardSizes[size];
-  
+
   // フリップアニメーション用の値（0 = 裏面、1 = 表面）
   const flipValue = useSharedValue(showFace ? 1 : 0);
 
@@ -64,7 +64,7 @@ export function Card({
   const frontAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(flipValue.value, [0, 1], [180, 0]);
     const opacity = interpolate(flipValue.value, [0, 0.5, 1], [0, 0, 1]);
-    
+
     return {
       transform: [{ rotateY: `${rotateY}deg` }],
       opacity,
@@ -76,7 +76,7 @@ export function Card({
   const backAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(flipValue.value, [0, 1], [0, 180]);
     const opacity = interpolate(flipValue.value, [0, 0.5, 1], [1, 0, 0]);
-    
+
     return {
       transform: [{ rotateY: `${rotateY}deg` }],
       opacity,
@@ -84,7 +84,7 @@ export function Card({
     };
   });
 
-  const containerStyle: ViewStyle = [
+  const containerStyle = [
     styles.container,
     dimensions,
     isSelected && styles.selected,
@@ -99,7 +99,7 @@ export function Card({
         <Animated.View style={[StyleSheet.absoluteFill, backAnimatedStyle]}>
           <CardBack themeColor={themeColor} size={size} />
         </Animated.View>
-        
+
         {/* フロント面 */}
         {card && (
           <Animated.View style={[StyleSheet.absoluteFill, frontAnimatedStyle]}>
@@ -120,7 +120,7 @@ export function Card({
       <Animated.View style={[StyleSheet.absoluteFill, backAnimatedStyle]}>
         <CardBack themeColor={themeColor} size={size} />
       </Animated.View>
-      
+
       {/* フロント面 */}
       {card && (
         <Animated.View style={[StyleSheet.absoluteFill, frontAnimatedStyle]}>

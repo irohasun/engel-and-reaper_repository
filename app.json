@@ -23,8 +23,7 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1a0f0a"
       },
-      "package": "com.angelreaper.game",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.angelreaper.game"
     },
     "plugins": [
       [
@@ -44,6 +43,9 @@
         "storageBucket": "angel-reaper-app.firebasestorage.app",
         "messagingSenderId": "673327518956",
         "appId": "1:673327518956:web:15eedb777f66e4aeaf01c9"
+      },
+      "eas": {
+        "projectId": "1a51dc27-fad7-497a-8455-a69f22bcd43c"
       }
     }
   }

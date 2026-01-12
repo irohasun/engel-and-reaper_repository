@@ -52,12 +52,12 @@ interface GameState {
 function getNextActivePlayerIndex(gameState: GameState, currentIndex: number): number {
   const totalPlayers = gameState.players.length;
   let nextIndex = (currentIndex + 1) % totalPlayers;
-  
+
   // 生存プレイヤーを探す
   while (gameState.players[nextIndex].isEliminated) {
     nextIndex = (nextIndex + 1) % totalPlayers;
   }
-  
+
   return nextIndex;
 }
 
@@ -66,18 +66,18 @@ function getNextActivePlayerIndex(gameState: GameState, currentIndex: number): n
  */
 function checkWinCondition(gameState: GameState): string | null {
   const alivePlayers = gameState.players.filter(p => !p.isEliminated);
-  
+
   // サバイバー勝利
   if (alivePlayers.length === 1) {
     return alivePlayers[0].userId;
   }
-  
+
   // 2回成功で勝利
   const winner = gameState.players.find(p => p.successCount >= 2);
   if (winner) {
     return winner.userId;
   }
-  
+
   return null;
 }
 
@@ -106,12 +106,12 @@ async function handlePlaceCard(
   }
 
   const player = gameState.players[playerIndex];
-  
+
   // placementフェーズの場合、現在のターンプレイヤーかチェック
   if (gameState.phase === 'placement' && gameState.currentPlayerIndex !== playerIndex) {
     throw new Error('Not your turn');
   }
-  
+
   // 手札存在確認
   if (payload.cardIndex < 0 || payload.cardIndex >= player.hand.length) {
     throw new Error('Invalid card index');
@@ -119,19 +119,19 @@ async function handlePlaceCard(
 
   // カードを手札から取得
   const card = player.hand[payload.cardIndex];
-  
+
   // round_setupフェーズの場合、1枚制限（既に1枚ある場合は追加不可）
   if (gameState.phase === 'round_setup') {
     // 1枚制限: スタックに既にカードがある場合はエラー（2枚目以降を追加不可）
     if (player.stack.length > 0) {
       throw new Error('Cannot place more than one card in round setup');
     }
-    
+
     const newHand = player.hand.filter((_, i) => i !== payload.cardIndex);
-    
+
     // スタックに新しいカード1枚を追加
     const newStack = [card];
-    
+
     const newPlayers = [...gameState.players];
     newPlayers[playerIndex] = {
       ...player,
@@ -150,20 +150,20 @@ async function handlePlaceCard(
       }],
     };
   }
-  
+
   // placementフェーズの場合、このターンで既にカードを追加している場合は置き換え
   if (gameState.phase === 'placement') {
     const turnStartStackCount = gameState.turnStartStackCounts?.[player.userId] || 0;
-    
+
     // 1枚制限: このターンで追加したカードが1枚を超える場合はエラー
     if (player.stack.length > turnStartStackCount + 1) {
       throw new Error('Cannot place more than one card per turn in placement phase');
     }
-    
+
     const newHand = player.hand.filter((_, i) => i !== payload.cardIndex);
     let handWithReturnedCard = newHand;
     let newStack = [...player.stack];
-    
+
     // このターンで追加したカードがある場合（1枚）、そのカードを手札に戻す
     if (player.stack.length === turnStartStackCount + 1) {
       const returnedCard = player.stack[player.stack.length - 1];
@@ -173,7 +173,7 @@ async function handlePlaceCard(
 
     // 新しいカードをスタックに追加
     newStack = [...newStack, card];
-    
+
     const newPlayers = [...gameState.players];
     newPlayers[playerIndex] = {
       ...player,
@@ -228,7 +228,7 @@ async function handleReady(
   }
 
   const player = gameState.players[playerIndex];
-  
+
   // 場にカードが1枚以上あるかチェック
   if (player.stack.length === 0) {
     throw new Error('Must place at least one card before ready');
@@ -251,7 +251,7 @@ async function handleReady(
     phase: newPhase,
     currentPlayerIndex: gameState.firstPlayerIndex,
   };
-  
+
   if (allReady) {
     newPhase = 'placement';
     // placementフェーズ開始時に、全プレイヤーの現在のスタック数を記録
@@ -289,7 +289,7 @@ async function handleConfirmPlacement(
   }
 
   const player = gameState.players[playerIndex];
-  
+
   // このターンでカードを追加していない場合はエラー
   const turnStartStackCount = gameState.turnStartStackCounts?.[player.userId] || 0;
   if (player.stack.length <= turnStartStackCount) {
@@ -334,7 +334,7 @@ async function handleReturnPlacedCard(
   }
 
   const player = gameState.players[playerIndex];
-  
+
   // このターンでカードを追加しているかチェック
   const turnStartStackCount = gameState.turnStartStackCounts?.[player.userId] || 0;
   if (player.stack.length <= turnStartStackCount) {
@@ -377,13 +377,13 @@ async function handleReturnInitialCard(
     playerIndex,
     stackLength: gameState.players[playerIndex]?.stack.length || 0,
   });
-  
+
   if (gameState.phase !== 'round_setup') {
     throw new Error('Invalid phase for returning initial card');
   }
 
   const player = gameState.players[playerIndex];
-  
+
   // スタックにカードがない場合はエラー
   if (player.stack.length === 0) {
     throw new Error('No card placed');
@@ -393,7 +393,7 @@ async function handleReturnInitialCard(
   const card = player.stack[0];
   const newStack: any[] = [];
   const newHand = [...player.hand, card];
-  
+
   console.log('[handleReturnInitialCard] Returning card to hand', {
     playerIndex,
     cardType: card,
@@ -914,7 +914,7 @@ function advanceToNextRound(gameState: GameState): { newState: Partial<GameState
   // 次のラウンドの準備
   const newRoundNumber = gameState.roundNumber + 1;
   const firstPlayerIndex = gameState.firstPlayerIndex ?? 0;
-  
+
   // 全プレイヤーの準備完了状態をリセット
   // 場のカードを手札に戻す（除外されたカードは戻らない）
   const newPlayers = gameState.players.map(player => {
@@ -963,7 +963,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
       hasData: !!event.data,
       dataExists: event.data?.exists,
     });
-    
+
     const action = event.data?.data();
     if (!action || action.processed) {
       console.log('[processGameAction] Action already processed or missing', {
@@ -976,7 +976,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
     }
 
     const { roomId, userId, type, payload } = action;
-    
+
     console.log('[processGameAction] Processing action', {
       actionId: event.params.actionId,
       roomId,
@@ -1066,7 +1066,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
           ...gameState,
           ...result.newState,
         } as GameState);
-        
+
         // 次のラウンドの状態をマージ
         result = {
           newState: {
@@ -1083,14 +1083,14 @@ export const processGameAction = functions.firestore.onDocumentCreated(
         const currentGameStateDoc = await transaction.get(gameStateRef);
         const currentGameState = currentGameStateDoc.data() as GameState;
         const currentPlayer = currentGameState.players[playerIndex];
-        
+
         // round_setupフェーズでplace_cardアクションの場合、スタックに既にカードがある場合はエラー（1枚制限）
         if (type === 'place_card' && currentGameState.phase === 'round_setup') {
           if (currentPlayer.stack.length > 0) {
             throw new Error('Cannot place more than one card in round setup');
           }
         }
-        
+
         // ゲーム状態更新（phaseStartedAtはserverTimestampに置き換え）
         const updateData: any = {
           ...result.newState,
@@ -1099,12 +1099,12 @@ export const processGameAction = functions.firestore.onDocumentCreated(
         if (result.newState.phaseStartedAt) {
           updateData.phaseStartedAt = admin.firestore.FieldValue.serverTimestamp();
         }
-        
+
         // players配列が含まれている場合、明示的に設定する（Firestoreのupdateはネストされた配列を完全に置き換えない可能性があるため）
         if (result.newState.players) {
           updateData.players = result.newState.players;
         }
-        
+
         console.log('[processGameAction] Updating game state', {
           type,
           phase: currentGameState.phase,
@@ -1112,7 +1112,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
           hasPlayers: 'players' in updateData,
           playersLength: updateData.players?.length,
         });
-        
+
         // デバッグログ: return_initial_cardアクションの場合、プレイヤーの状態を確認
         if (type === 'return_initial_card' && updateData.players) {
           const updatedPlayer = updateData.players[playerIndex];
@@ -1123,7 +1123,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
             hand: updatedPlayer?.hand,
             stack: updatedPlayer?.stack,
           });
-          
+
           // 更新前の状態も確認
           const currentPlayer = currentGameState.players[playerIndex];
           console.log('[processGameAction] Return initial card - current player state', {
@@ -1134,7 +1134,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
             stack: currentPlayer?.stack,
           });
         }
-        
+
         // players配列を含むすべての更新を一度に行う
         // updateDataには既にplayersが含まれているので、一度のupdateで更新できる
         transaction.update(gameStateRef, updateData);
@@ -1155,20 +1155,20 @@ export const processGameAction = functions.firestore.onDocumentCreated(
         transaction.update(event.data!.ref, { processed: true });
 
         const roomRef = db.collection('rooms').doc(roomId);
-        
+
         // ゲーム終了時はルームを待機状態に戻し、全プレイヤーの準備完了状態をリセット
         if (result.newState.phase === 'game_over') {
           console.log('[game_over] Resetting room to waiting and players to not ready', {
             roomId,
             playerIds,
           });
-          
+
           // ルームのstatusを'waiting'に戻す
           transaction.update(roomRef, {
             status: 'waiting',
             lastActivityAt: admin.firestore.FieldValue.serverTimestamp(),
           });
-          
+
           // 全プレイヤーのisReadyをfalseにリセット（playerIdsを使用）
           playerIds.forEach((playerId: string) => {
             const playerRef = roomRef.collection('players').doc(playerId);
@@ -1176,7 +1176,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
               isReady: false,
             });
           });
-          
+
           console.log('[game_over] Room and players reset successfully');
         } else {
           // 通常の最終アクティビティ更新
