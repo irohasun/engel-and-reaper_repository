@@ -28,7 +28,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { NextPlayerSelectorModal } from '../components/ui/NextPlayerSelectorModal';
 import { Card } from '../components/cards/Card';
-import { getPhaseDisplayName, getTotalStackCount, getLogMessage, canPlaceCard, canStartBidding } from '../utils/gameLogic';
+import { getPhaseDisplayName, getTotalStackCount, canPlaceCard, canStartBidding } from '../utils/gameLogic';
 import type { GameAction, GamePhase } from '../types/game';
 import { getRoomById } from '../services/firestore';
 import { colors } from '../theme/colors';
@@ -1083,19 +1083,6 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
               />
             </View>
           )}
-
-          {/* ログエリア */}
-          <View style={styles.logArea}>
-            <Text style={styles.logTitle}>{t.game.log.title}</Text>
-            <ScrollView style={styles.logList}>
-              {(targetState.logs || []).slice(-10).reverse().map((log) => (
-                <Text key={log.id} style={styles.logEntry}>
-                  {getLogMessage(log, targetState.players, t)}
-                </Text>
-              ))}
-            </ScrollView>
-          </View>
-
           {/* 選択解除用の透明なオーバーレイ */}
           {selectedCardIndex !== null && (targetState.phase === 'placement' || targetState.phase === 'round_setup') && (
             <Pressable
@@ -1344,29 +1331,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm, // ボタンと手札の距離を近づけるため、paddingBottomを減らす
     minHeight: 120, // ボタンの有無で手札の位置が変わらないように固定の高さを確保（距離を近づけるため少し減らす）
-  },
-  logArea: {
-    backgroundColor: `${colors.tavern.wood}33`,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: `${colors.tavern.gold}33`,
-    maxHeight: 150,
-  },
-  logTitle: {
-    fontSize: fontSizes.base,
-    color: colors.tavern.gold,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  logList: {
-    maxHeight: 120,
-  },
-  logEntry: {
-    fontSize: fontSizes.sm,
-    color: colors.tavern.cream,
-    opacity: 0.8,
-    marginBottom: spacing.xs,
   },
   penaltyModalContent: {
     gap: spacing.md,

@@ -10,7 +10,6 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   subscribeToGameState,
   subscribeToRoomPlayers,
-  subscribeToGameLogs,
   sendGameAction,
   sendHeartbeat,
 } from '../services/firestore';
@@ -108,42 +107,13 @@ function calculateEliminatedCardCount(hand: Card[], stack: Card[]): number {
 }
 
 /**
- * オンラインモードのログをテストモードと同じ形式に変換
- * playerIndexからplayerIdへの変換を行う
- */
-function convertOnlineLogsToLocalLogs(
-  logs: any[],
-  players: Player[]
-): LogEntry[] {
-  return logs.map(log => {
-    // playerIndexが存在する場合はplayerIdに変換
-    if (typeof log.playerIndex === 'number' && log.playerIndex >= 0 && log.playerIndex < players.length) {
-      return {
-        ...log,
-        playerId: players[log.playerIndex].id,
-        playerIndex: log.playerIndex, // 互換性のため残す
-      };
-    }
-    // playerIdが既に存在する場合はそのまま
-    if (log.playerId) {
-      return log;
-    }
-    // どちらもない場合は空文字列を設定（エラー回避）
-    return {
-      ...log,
-      playerId: '',
-    };
-  });
-}
-
-/**
  * Firestore GameState を Local GameState に変換
+ * API使用量削減: ログ機能は無効化済み（空配列を返却）
  */
 function convertFirestoreToLocalGameState(
   firestoreState: FirestoreGameState,
   nicknameMap: PlayerNicknameMap,
-  roomId: string,
-  logs: LogEntry[] // 追加
+  roomId: string
 ): LocalGameState {
 
   // プレイヤー情報を変換
@@ -241,9 +211,7 @@ function convertFirestoreToLocalGameState(
   }
   // round_setupフェーズでは空オブジェクト（リセット）
 
-  // ログを変換（playerIndex → playerId）
-  const convertedLogs = convertOnlineLogsToLocalLogs(logs, players);
-
+  // API使用量削減: オンラインモードではログ機能を無効化（空配列を使用）
   return {
     phase: firestoreState.phase,
     currentRound: firestoreState.roundNumber,
@@ -255,7 +223,7 @@ function convertFirestoreToLocalGameState(
     bidStarterId,
     reaperOwnerId,
     revealedCards,
-    logs: convertedLogs, // 変換済みログを使用
+    logs: [], // オンラインモードではログを使用しない
     winnerId: firestoreState.winnerId,
     cardsToReveal,
     revealingPlayerId,
@@ -272,7 +240,7 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [gameState, setGameState] = useState<LocalGameState | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]); // 追加
+  // API使用量削減: オンラインモードではログ機能を完全に無効化済み
 
   // ニックネームマップを保持
   const [nicknameMap, setNicknameMap] = useState<PlayerNicknameMap>({});
@@ -300,19 +268,6 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
     return () => unsubscribe();
   }, [roomId]);
 
-  // ========================================
-  // GameLogsの監視
-  // ========================================
-  useEffect(() => {
-    if (!roomId) return;
-
-    const unsubscribe = subscribeToGameLogs(roomId, (fetchedLogs) => {
-
-      setLogs(fetchedLogs as LogEntry[]);
-    });
-
-    return () => unsubscribe();
-  }, [roomId]);
 
   // ========================================
   // GameStateの監視
@@ -341,8 +296,7 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
         const localGameState = convertFirestoreToLocalGameState(
           firestoreGameState,
           nicknameMap,
-          roomId,
-          logs
+          roomId
         );
 
         setGameState(localGameState);
@@ -356,7 +310,8 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
     });
 
     return () => unsubscribe();
-  }, [roomId, nicknameMap, logs]);
+    // API使用量削減: logsを依存配列から削除（ログ監視廃止のため）
+  }, [roomId, nicknameMap]);
 
   // ========================================
   // ハートビート送信（30秒ごと）
@@ -364,11 +319,13 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   useEffect(() => {
     if (!user || !roomId) return;
 
+    // API使用量削減: ハートビート間隔を30秒から60秒に変更
+    // 書き込み頻度が半減し、Firestoreコストを削減できる
     const interval = setInterval(() => {
       sendHeartbeat(roomId, user.userId).catch(error => {
         console.error('ハートビート送信エラー:', error);
       });
-    }, 30000);
+    }, 60000);
 
     // 初回送信
     sendHeartbeat(roomId, user.userId);
