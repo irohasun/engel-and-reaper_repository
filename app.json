@@ -36,14 +36,6 @@
     ],
     "web": {},
     "extra": {
-      "firebase": {
-        "apiKey": "AIzaSyDZVopOwd82_pv64cRco6VNWIDB877Hrpw",
-        "authDomain": "angel-reaper-app.firebaseapp.com",
-        "projectId": "angel-reaper-app",
-        "storageBucket": "angel-reaper-app.firebasestorage.app",
-        "messagingSenderId": "673327518956",
-        "appId": "1:673327518956:web:15eedb777f66e4aeaf01c9"
-      },
       "eas": {
         "projectId": "1a51dc27-fad7-497a-8455-a69f22bcd43c"
       }

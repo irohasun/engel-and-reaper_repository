@@ -41,7 +41,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
+    "@types/dotenv": "^6.1.1",
     "@types/react": "~19.1.10",
+    "dotenv": "^17.2.3",
     "puppeteer": "^24.34.0",
     "typescript": "~5.9.2"
   }

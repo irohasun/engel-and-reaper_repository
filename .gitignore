@@ -20,4 +20,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# 環境変数ファイル（機密情報を含む）
 .env
+.env.local
+.env*.local
