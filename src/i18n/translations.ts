@@ -68,13 +68,13 @@ export const translations = {
       hostLeaveConfirm: 'ホストが退出すると、ルームは削除されるか他のプレイヤーに移譲されます。',
       exit: '退出',
     },
-      game: {
-        round: 'ラウンド',
-        yourTurn: 'あなたの番です！',
-        othersTurn: '{name}の番です',
-        turn: '手番',
-        hand: '手札',
-        phase: {
+    game: {
+      round: 'ラウンド',
+      yourTurn: 'あなたの番です！',
+      othersTurn: '{name}の番です',
+      turn: '手番',
+      hand: '手札',
+      phase: {
         round_setup: 'ラウンド準備',
         placement: '入札/カード追加',
         bidding: '入札',
@@ -142,6 +142,12 @@ export const translations = {
       wins: '勝',
       winsPlural: '勝',
       nextRound: '次のラウンド',
+      nextPlayerSelection: {
+        title: '次の先手を選択',
+        description: 'あなたは脱落しました。次のラウンドの先手プレイヤーを選択してください。',
+        winsLabel: '勝',
+        cardsLabel: '枚',
+      },
     },
     result: {
       victoryTitle: '勝利！',
@@ -291,6 +297,13 @@ export const translations = {
       wins: 'Win',
       winsPlural: 'Wins',
       nextRound: 'Next Round',
+      nextPlayerSelection: {
+        title: 'Select Next Player',
+        description: 'You have been eliminated. Please select the next player to start the next round.',
+        winsLabel: 'win',
+        winsLabelPlural: 'wins',
+        cardsLabel: 'cards',
+      },
     },
     result: {
       victoryTitle: 'Victory!',

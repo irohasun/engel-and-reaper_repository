@@ -446,10 +446,16 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
           break;
 
         // 次のプレイヤー選択（自分の死神で脱落した場合）
-        case 'SELECT_NEXT_PLAYER':
-          // Cloud Functionsで対応が必要（現在未実装）
-          console.warn('SELECT_NEXT_PLAYER needs Cloud Functions implementation');
+        case 'SELECT_NEXT_PLAYER': {
+          const nextPlayerIndex = playerIndexMapRef.current.get(action.nextPlayerId);
+          if (nextPlayerIndex === undefined) {
+            throw new Error(`Player not found: ${action.nextPlayerId}`);
+          }
+          await sendGameAction(roomId, user.userId, 'select_next_player', {
+            nextPlayerIndex
+          });
           break;
+        }
 
         // フェーズ進行（クライアントから呼び出さない）
         case 'ADVANCE_PHASE':

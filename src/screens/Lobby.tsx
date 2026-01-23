@@ -30,6 +30,9 @@ import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
 import { fontSizes } from '../theme/fonts';
 
+// ローディングタイムアウト（10秒）
+const LOADING_TIMEOUT_MS = 10000;
+
 type LobbyProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Lobby'>;
   route: RouteProp<RootStackParamList, 'Lobby'>;
@@ -123,6 +126,24 @@ export function Lobby({ navigation, route }: LobbyProps) {
     }, [])
   );
 
+  // ローディングタイムアウト機構
+  // Firestoreリスナー初期化が一定時間以上かかった場合、エラー表示してホームに戻る
+  useEffect(() => {
+    if (!loading) return;
+
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        Alert.alert(
+          t.common.error,
+          language === 'ja' ? 'ルームの読み込みに失敗しました' : 'Failed to load room',
+          [{ text: t.common.ok, onPress: () => navigation.navigate('Home') }]
+        );
+      }
+    }, LOADING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [loading, navigation, t, language]);
+
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(roomCode);
     Alert.alert(t.common.copied, `${t.lobby.roomCode}「${roomCode}」${t.common.copied}`);
@@ -195,9 +216,10 @@ export function Lobby({ navigation, route }: LobbyProps) {
     );
   };
 
-  // ローディング中、またはルームの状態がwaitingでない場合はローディング画面を表示
+  // ローディング中、またはルームがゲーム進行中の場合はローディング画面を表示
   // （Play Again後にルームに戻った時、前回のゲーム画面が一瞬表示されることを防ぐ）
-  if (loading || (room && room.status !== 'waiting')) {
+  // 注: room.status === 'playing' のみチェック（game_over等の中間状態では表示しない）
+  if (loading || (room && room.status === 'playing')) {
     return (
       <LinearGradient
         colors={[colors.tavern.bg, colors.tavern.wood, colors.tavern.bg]}

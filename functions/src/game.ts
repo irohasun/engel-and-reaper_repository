@@ -892,6 +892,59 @@ async function handleSelectPenaltyCard(
 }
 
 /**
+ * 次プレイヤー選択（自分の死神で脱落した場合）
+ */
+async function handleSelectNextPlayer(
+  gameState: GameState,
+  playerIndex: number,
+  payload: { nextPlayerIndex: number }
+): Promise<{ newState: Partial<GameState>; logs: any[] }> {
+  // フェーズ検証
+  if (gameState.phase !== 'next_player_selection') {
+    throw new Error('Invalid phase for next player selection');
+  }
+
+  // 選択されたプレイヤーの検証
+  const nextPlayer = gameState.players[payload.nextPlayerIndex];
+  if (!nextPlayer) {
+    throw new Error('Selected player does not exist');
+  }
+  if (nextPlayer.isEliminated) {
+    throw new Error('Cannot select eliminated player as next player');
+  }
+
+  // 次のラウンドの準備
+  const newRoundNumber = gameState.roundNumber + 1;
+
+  // 全プレイヤーの場のカードを手札に戻し、準備状態をリセット
+  const newPlayers = gameState.players.map(player => ({
+    ...player,
+    hand: [...player.hand, ...player.stack],
+    stack: [],
+    isReady: false,
+  }));
+
+  return {
+    newState: {
+      phase: 'round_setup',
+      roundNumber: newRoundNumber,
+      players: newPlayers,
+      currentPlayerIndex: payload.nextPlayerIndex,
+      firstPlayerIndex: payload.nextPlayerIndex,
+      bidding: null,
+      resolution: null,
+      penalty: null,
+      phaseStartedAt: admin.firestore.Timestamp.now(),
+    },
+    logs: [{
+      type: 'place_card',
+      message: `ラウンド${newRoundNumber}開始（次プレイヤー選択）`,
+      playerIndex: payload.nextPlayerIndex,
+    }],
+  };
+}
+
+/**
  * round_endフェーズから次のラウンドのround_setupフェーズに進む
  */
 function advanceToNextRound(gameState: GameState): { newState: Partial<GameState>; logs: any[] } {
@@ -1012,7 +1065,7 @@ export const processGameAction = functions.firestore.onDocumentCreated(
         type,
         typeLength: type?.length,
         typeValue: JSON.stringify(type),
-        availableCases: ['place_card', 'ready', 'confirm_placement', 'return_placed_card', 'return_initial_card', 'bid_start', 'raise', 'pass', 'reveal_card', 'select_penalty_card'],
+        availableCases: ['place_card', 'ready', 'confirm_placement', 'return_placed_card', 'return_initial_card', 'bid_start', 'raise', 'pass', 'reveal_card', 'select_penalty_card', 'select_next_player'],
       });
 
       switch (type) {
@@ -1054,6 +1107,10 @@ export const processGameAction = functions.firestore.onDocumentCreated(
 
         case 'select_penalty_card':
           result = await handleSelectPenaltyCard(gameState, playerIndex, payload);
+          break;
+
+        case 'select_next_player':
+          result = await handleSelectNextPlayer(gameState, playerIndex, payload);
           break;
 
         default:
@@ -1195,4 +1252,13 @@ export const processGameAction = functions.firestore.onDocumentCreated(
     }
   }
 );
+
+// ========================================
+// テスト用エクスポート
+// ========================================
+export const __test__ = {
+  handleSelectNextPlayer,
+};
+
+export type { GameState, GameStatePlayer };
 

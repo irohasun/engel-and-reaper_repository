@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Player } from '../../types/game';
 import { Modal } from './Modal';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { fontSizes } from '../../theme/fonts';
@@ -22,6 +23,8 @@ export function NextPlayerSelectorModal({
   players,
   onSelectPlayer,
 }: NextPlayerSelectorModalProps) {
+  const { t, language } = useLanguage();
+
   // 生存プレイヤーのみ選択可能
   const alivePlayers = players.filter((p) => p.isAlive);
 
@@ -34,11 +37,22 @@ export function NextPlayerSelectorModal({
     pink: colors.player.pink,
   };
 
+  // プレイヤーの統計情報を表示するテキストを生成
+  const getPlayerStats = (player: Player) => {
+    const cardCount = player.hand.length + player.stack.length;
+    if (language === 'ja') {
+      return `${player.wins}${t.game.nextPlayerSelection.winsLabel} • ${cardCount}${t.game.nextPlayerSelection.cardsLabel}`;
+    } else {
+      const winsLabel = player.wins === 1 ? t.game.nextPlayerSelection.winsLabel : (t.game.nextPlayerSelection as any).winsLabelPlural || 'wins';
+      return `${player.wins} ${winsLabel} • ${cardCount} ${t.game.nextPlayerSelection.cardsLabel}`;
+    }
+  };
+
   return (
-    <Modal visible={visible} onClose={() => {}} title="Select Next Player">
+    <Modal visible={visible} onClose={() => { }} title={t.game.nextPlayerSelection.title}>
       <View style={styles.content}>
         <Text style={styles.description}>
-          You have been eliminated. Please select the next player to start the next round.
+          {t.game.nextPlayerSelection.description}
         </Text>
         <View style={styles.playerList}>
           {alivePlayers.map((player) => (
@@ -63,7 +77,7 @@ export function NextPlayerSelectorModal({
                 <View style={styles.playerInfo}>
                   <Text style={styles.playerName}>{player.name}</Text>
                   <Text style={styles.playerStats}>
-                    {player.wins} win{player.wins !== 1 ? 's' : ''} • {player.hand.length + player.stack.length} cards
+                    {getPlayerStats(player)}
                   </Text>
                 </View>
               </LinearGradient>
