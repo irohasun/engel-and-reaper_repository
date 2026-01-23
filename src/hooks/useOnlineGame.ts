@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   subscribeToGameState,
   subscribeToRoomPlayers,
+
   sendGameAction,
   sendHeartbeat,
 } from '../services/firestore';
@@ -269,6 +270,7 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   }, [roomId]);
 
 
+
   // ========================================
   // GameStateの監視
   // ========================================
@@ -319,16 +321,21 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   useEffect(() => {
     if (!user || !roomId) return;
 
+    const safeSendHeartbeat = () => {
+      sendHeartbeat(roomId, user.userId).catch(error => {
+        // 'not-found'エラーは無視する（ルーム削除後などに発生する可能性があるため）
+        if (error?.code !== 'not-found' && !error?.message?.includes('not-found')) {
+          console.error('ハートビート送信エラー:', error);
+        }
+      });
+    };
+
     // API使用量削減: ハートビート間隔を30秒から60秒に変更
     // 書き込み頻度が半減し、Firestoreコストを削減できる
-    const interval = setInterval(() => {
-      sendHeartbeat(roomId, user.userId).catch(error => {
-        console.error('ハートビート送信エラー:', error);
-      });
-    }, 60000);
+    const interval = setInterval(safeSendHeartbeat, 60000);
 
     // 初回送信
-    sendHeartbeat(roomId, user.userId);
+    safeSendHeartbeat();
 
     return () => clearInterval(interval);
   }, [roomId, user]);

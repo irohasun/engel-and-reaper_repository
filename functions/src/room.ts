@@ -253,6 +253,76 @@ export const leaveRoom = functions.https.onCall(async (request) => {
 });
 
 /**
+ * プレイヤーの準備完了状態を更新
+ */
+export const updatePlayerReady = functions.https.onCall(async (request) => {
+  if (!request.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { roomId, isReady } = request.data;
+  const userId = request.auth.uid;
+
+  try {
+    const playerRef = db.collection('rooms').doc(roomId)
+      .collection('players').doc(userId);
+
+    const playerDoc = await playerRef.get();
+    if (!playerDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Player not found in room');
+    }
+
+    await playerRef.update({
+      isReady,
+      lastHeartbeatAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating player ready:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+/**
+ * ハートビート送信
+ */
+export const sendHeartbeat = functions.https.onCall(async (request) => {
+  if (!request.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { roomId } = request.data;
+  const userId = request.auth.uid;
+
+  try {
+    const playerRef = db.collection('rooms').doc(roomId)
+      .collection('players').doc(userId);
+
+    const playerDoc = await playerRef.get();
+    if (!playerDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'No document to update');
+    }
+
+    await playerRef.update({
+      isConnected: true,
+      lastHeartbeatAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error sending heartbeat:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+/**
  * ゲーム開始
  */
 export const startGame = functions.https.onCall(async (request) => {

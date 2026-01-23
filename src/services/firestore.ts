@@ -138,55 +138,76 @@ export const subscribeToRoom = (
 
 /**
  * ルームのプレイヤー一覧を取得
+ * サブコレクション方式: rooms/{roomId}/players から取得
  */
 export const getRoomPlayers = async (roomId: string): Promise<RoomPlayer[]> => {
   const playersSnapshot = await getDocs(
     collection(firestore, 'rooms', roomId, 'players')
   );
 
-  return playersSnapshot.docs.map(doc => doc.data() as RoomPlayer);
+  const players = playersSnapshot.docs.map(doc => doc.data() as RoomPlayer);
+  // joinedAtでソート（古い順）
+  players.sort((a, b) => {
+    const aTime = a.joinedAt?.toMillis?.() || 0;
+    const bTime = b.joinedAt?.toMillis?.() || 0;
+    return aTime - bTime;
+  });
+  return players;
 };
 
 /**
  * ルームのプレイヤーをリアルタイム監視
+ * サブコレクション方式: rooms/{roomId}/players から取得
  */
 export const subscribeToRoomPlayers = (
   roomId: string,
   callback: (players: RoomPlayer[]) => void
 ): Unsubscribe => {
+  // サブコレクションを監視
   return onSnapshot(
     collection(firestore, 'rooms', roomId, 'players'),
     (snapshot) => {
       const players = snapshot.docs.map(doc => doc.data() as RoomPlayer);
+      // joinedAtでソート（古い順）
+      players.sort((a, b) => {
+        const aTime = a.joinedAt?.toMillis?.() || 0;
+        const bTime = b.joinedAt?.toMillis?.() || 0;
+        return aTime - bTime;
+      });
       callback(players);
     }
   );
 };
 
 /**
- * プレイヤーの準備完了状態を更新
+ * プレイヤーの準備完了状態を更新（Cloud Function経由）
  */
 export const updatePlayerReady = async (
   roomId: string,
   userId: string,
   isReady: boolean
 ): Promise<void> => {
-  await updateDoc(doc(firestore, 'rooms', roomId, 'players', userId), {
-    isReady,
-  });
+  const updatePlayerReadyFn = httpsCallable<
+    { roomId: string; isReady: boolean },
+    void
+  >(functions, 'updatePlayerReady');
+
+  await updatePlayerReadyFn({ roomId, isReady });
 };
 
 /**
- * ハートビートを送信
+ * ハートビートを送信（Cloud Function経由）
  */
 export const sendHeartbeat = async (
   roomId: string,
   userId: string
 ): Promise<void> => {
-  await updateDoc(doc(firestore, 'rooms', roomId, 'players', userId), {
-    lastHeartbeatAt: serverTimestamp(),
-    isConnected: true,
-  });
+  const sendHeartbeatFn = httpsCallable<
+    { roomId: string },
+    void
+  >(functions, 'sendHeartbeat');
+
+  await sendHeartbeatFn({ roomId });
 };
 
 // ========================================

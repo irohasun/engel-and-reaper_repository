@@ -87,18 +87,30 @@ export function Lobby({ navigation, route }: LobbyProps) {
     };
   }, [roomId, t]);
 
-  // ハートビート送信（30秒ごと）
+  // ハートビート送信（60秒ごと）
+  // connection.tsの切断判定閾値（60秒）と整合性を取るため
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
       sendHeartbeat(roomId, user.userId).catch(error => {
-        console.error('ハートビート送信エラー:', error);
+        // ドキュメントが見つからない場合は警告として処理（プレイヤーがルームから削除された場合など）
+        if (error?.message?.includes('No document to update') || error?.code === 'not-found') {
+          console.warn('ハートビート送信: ドキュメントが見つかりません（ルームから退出済みの可能性）');
+        } else {
+          console.error('ハートビート送信エラー:', error);
+        }
       });
-    }, 30000);
+    }, 60000);
 
     // 初回送信
-    sendHeartbeat(roomId, user.userId);
+    sendHeartbeat(roomId, user.userId).catch(error => {
+      if (error?.message?.includes('No document to update') || error?.code === 'not-found') {
+        console.warn('ハートビート送信: ドキュメントが見つかりません（ルームから退出済みの可能性）');
+      } else {
+        console.error('ハートビート送信エラー:', error);
+      }
+    });
 
     return () => clearInterval(interval);
   }, [roomId, user]);

@@ -92,25 +92,25 @@ export interface GameState {
   currentPlayerIndex: number;    // 現在の手番プレイヤーのインデックス
   firstPlayerIndex: number;      // 先手プレイヤーのインデックス
   roundNumber: number;           // 現在のラウンド番号
-  
+
   // プレイヤー状態配列（playerIdsの順序と対応）
   players: GameStatePlayer[];
-  
+
   // 入札フェーズ用
   bidding: GameStateBidding | null;
-  
+
   // 判定フェーズ用
   resolution: GameStateResolution | null;
-  
+
   // ペナルティフェーズ用
   penalty: GameStatePenalty | null;
-  
+
   // ゲーム終了情報
   winnerId: string | null;       // 勝者のuserId
-  
+
   // placementフェーズ用: ターン開始時の各プレイヤーのスタック枚数
   turnStartStackCounts?: Record<string, number>;
-  
+
   // タイムスタンプ
   updatedAt: Timestamp;
   phaseStartedAt: Timestamp;     // 現フェーズ開始時刻
