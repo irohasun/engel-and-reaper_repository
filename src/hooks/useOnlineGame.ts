@@ -10,7 +10,6 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   subscribeToGameState,
   subscribeToRoomPlayers,
-
   sendGameAction,
   sendHeartbeat,
 } from '../services/firestore';
@@ -22,8 +21,12 @@ import type {
   Card,
   ThemeColor,
   RevealedCard,
-  LogEntry,
 } from '../types/game';
+
+// ========================================
+// API使用量削減: アクション送信の最小間隔 (ms)
+// ========================================
+const ACTION_THROTTLE_MS = 300;
 
 // ========================================
 // 定数
@@ -249,6 +252,10 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   // playerIdからindexへの変換用マップ
   const playerIndexMapRef = useRef<Map<string, number>>(new Map());
 
+  // API使用量削減: アクション送信のスロットリング用
+  const lastActionTimeRef = useRef<number>(0);
+  const pendingActionRef = useRef<boolean>(false);
+
   // ========================================
   // RoomPlayersの監視（ニックネーム取得）
   // ========================================
@@ -342,11 +349,26 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
 
   // ========================================
   // ゲームアクションを送信
+  // API使用量削減: スロットリングで重複送信を防止
   // ========================================
   const dispatchAction = useCallback(async (action: GameAction) => {
     if (!user || !roomId) {
       throw new Error('User or room not available');
     }
+
+    // API使用量削減: 重複送信防止
+    // 送信中の場合は無視
+    if (pendingActionRef.current) {
+      return;
+    }
+
+    // 前回送信から一定時間経過していない場合は無視
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE_MS) {
+      return;
+    }
+
+    pendingActionRef.current = true;
 
     try {
       switch (action.type) {
@@ -447,9 +469,15 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
         default:
           console.warn('Unknown action type:', (action as any).type);
       }
+
+      // 送信成功時にタイムスタンプを記録
+      lastActionTimeRef.current = Date.now();
     } catch (err) {
       console.error('Error dispatching action:', err);
       throw err;
+    } finally {
+      // 送信完了（成功/失敗問わず）でフラグをリセット
+      pendingActionRef.current = false;
     }
   }, [user, roomId]);
 
