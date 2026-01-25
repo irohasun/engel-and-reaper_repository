@@ -323,11 +323,19 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   }, [isOnlineMode, previousPhase, state?.phase, state, isWaitingNextRound]);
 
   // round_setupフェーズに遷移したら待機状態をリセット（プレイマットの色が変わる）
+  // 新しいゲーム開始時に判定関連のRef/Stateもすべてリセットする
   useEffect(() => {
     if (state?.phase === 'round_setup' && previousPhase !== 'round_setup') {
       setIsWaitingNextRound(false);
       setLastResolutionState(null);
       setPendingWinUpdatePlayerId(null);
+      // 新しいラウンド/ゲーム開始時に判定関連のRefもリセット
+      // これにより、再戦時に前回のgame_over状態が誤って処理されるのを防ぐ
+      lastProcessedGameOverRef.current = false;
+      lastProcessedLogIdRef.current = null;
+      // resolutionResultがまだ表示中の場合もクリア（新ゲーム開始対応）
+      setResolutionResult(null);
+      setIsWaitingForResolution(false);
     }
   }, [state?.phase, previousPhase]);
 
