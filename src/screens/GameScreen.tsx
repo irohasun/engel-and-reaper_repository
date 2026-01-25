@@ -27,7 +27,9 @@ import { BidModal } from '../components/ui/BidModal';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { NextPlayerSelectorModal } from '../components/ui/NextPlayerSelectorModal';
+import { ThrottleToast } from '../components/ui/ThrottleToast';
 import { Card } from '../components/cards/Card';
+import { useThrottleFeedback } from '../hooks/useThrottleFeedback';
 import { getPhaseDisplayName, getTotalStackCount, canPlaceCard, canStartBidding } from '../utils/gameLogic';
 import type { GameAction, GamePhase } from '../types/game';
 import { getRoomById } from '../services/firestore';
@@ -68,6 +70,9 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   // オンラインモード用のdispatchAction
   const { dispatchAction: onlineDispatchAction } = onlineHook;
 
+  // スロットリングフィードバック
+  const { showThrottleFeedback, toastVisible, hideToast } = useThrottleFeedback();
+
   // ========================================
   // 全てのuseState（条件分岐の前に配置）
   // ========================================
@@ -91,6 +96,8 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   const lastProcessedLogIdRef = useRef<string | null>(null);
   const resolutionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastProcessedGameOverRef = useRef<boolean>(false);
+  // オンラインモード用：前回の各プレイヤーの勝利数を追跡（ログ無効化対応）
+  const previousWinsRef = useRef<Record<string, number>>({});
   // オンライン対戦用：判定結果を確認するまで待機するフラグと状態保存
   const [isWaitingNextRound, setIsWaitingNextRound] = useState(false);
   const [lastResolutionState, setLastResolutionState] = useState<typeof state | null>(null);
@@ -119,7 +126,12 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     if (isOnlineMode) {
       try {
         setActionLoading(true);
-        await onlineDispatchAction(action);
+        const result = await onlineDispatchAction(action);
+
+        // スロットリングされた場合はフィードバックを表示
+        if (result.throttled) {
+          showThrottleFeedback();
+        }
       } catch (error) {
         console.error('オンラインアクションエラー:', error);
         Alert.alert('エラー', 'アクションの送信に失敗しました。再試行してください。');
@@ -129,13 +141,13 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     } else {
       testDispatch(action);
     }
-  }, [isOnlineMode, onlineDispatchAction, testDispatch]);
+  }, [isOnlineMode, onlineDispatchAction, testDispatch, showThrottleFeedback]);
 
   // ========================================
   // 全てのuseEffect（条件分岐の前に配置）
   // ========================================
 
-  // フェーズ遷移の検知
+  // フェーズ遷移の検知（フェーズ遷移ポップアップの表示制御）
   useEffect(() => {
     if (state && state.phase !== previousPhase) {
       // 最新のログをチェックして、判定結果ログが含まれているか確認
@@ -147,8 +159,8 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
       // game_endログもチェック
       const hasGameEndLog = latestLog && latestLog.type === 'game_end';
 
-      // 判定結果モーダルが出ている間、表示待ち中、判定結果ログが存在する場合、またはgame_overフェーズの場合はフェーズ遷移をスキップ
-      if (resolutionResult || isWaitingForResolution || hasResolutionLog || hasGameEndLog || state.phase === 'game_over') {
+      // 判定結果モーダルが出ている間、表示待ち中、判定結果ログが存在する場合、game_overフェーズ、またはpenaltyフェーズの場合はフェーズ遷移をスキップ
+      if (resolutionResult || isWaitingForResolution || hasResolutionLog || hasGameEndLog || state.phase === 'game_over' || state.phase === 'penalty') {
         // 判定結果モーダルが表示される場合は、フェーズ遷移ポップアップは不要
         setPendingPhase(null);
         setPhaseTransitionVisible(false);
@@ -156,7 +168,7 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
         setPhaseTransitionVisible(true);
         setPendingPhase(null);
       }
-      setPreviousPhase(state.phase);
+      // 注意: previousPhaseの更新は他の状態監視useEffectの後に行う（別のuseEffectで）
     }
   }, [state?.phase, previousPhase, resolutionResult, isWaitingForResolution, state?.logs]);
 
@@ -197,6 +209,134 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
       lastProcessedGameOverRef.current = false;
     }
   }, [state?.phase, state?.winnerId, state?.players]);
+
+  // round_endフェーズでの判定結果モーダル表示（オンラインモード、ログ無効化対応）
+  useEffect(() => {
+    // オンラインモードでない場合はスキップ（テストモードはログがあるので既存ロジックで動作）
+    if (!isOnlineMode) return;
+
+    // 前フェーズがresolutionで、現フェーズがround_end（game_overではない）場合
+    if (previousPhase === 'resolution' && state?.phase === 'round_end') {
+      // 既に判定結果モーダルが表示中または待機中の場合はスキップ
+      if (resolutionResult || isWaitingForResolution) return;
+
+      // 勝利数の増加を検出（成功判定）
+      const previousWins = previousWinsRef.current;
+      const winner = state.players.find(p => p.wins > (previousWins[p.id] ?? 0));
+
+      if (winner) {
+        // 成功: 勝者の名前でモーダルを表示
+        setIsWaitingForResolution(true);
+        setPhaseTransitionVisible(false);
+        // 即座に勝利更新を保留（プレイマットの色が一瞬変わるのを防ぐ）
+        setPendingWinUpdatePlayerId(winner.id);
+
+        if (resolutionTimerRef.current) {
+          clearTimeout(resolutionTimerRef.current);
+        }
+
+        const delayMs = 600;
+        resolutionTimerRef.current = setTimeout(() => {
+          setIsWaitingForResolution(false);
+          setResolutionResult({
+            type: 'success',
+            playerName: winner.name,
+          });
+        }, delayMs);
+      } else if (state.reaperOwnerId) {
+        // 失敗: 死神がめくられた（ペナルティフェーズを経由してround_endに来た場合）
+        const bidder = state.players.find(p => p.id === state.highestBidderId);
+        const reaperOwner = state.players.find(p => p.id === state.reaperOwnerId);
+
+        setIsWaitingForResolution(true);
+        setPhaseTransitionVisible(false);
+
+        if (resolutionTimerRef.current) {
+          clearTimeout(resolutionTimerRef.current);
+        }
+
+        const delayMs = 600;
+        resolutionTimerRef.current = setTimeout(() => {
+          setIsWaitingForResolution(false);
+          setResolutionResult({
+            type: 'fail',
+            playerName: bidder?.name || 'Unknown',
+            targetName: reaperOwner?.name || 'Unknown',
+          });
+        }, delayMs);
+      }
+    }
+
+    // 勝利数を記録（フェーズに関わらず常に更新）
+    if (state?.players) {
+      const winsMap: Record<string, number> = {};
+      state.players.forEach(p => {
+        winsMap[p.id] = p.wins;
+      });
+      previousWinsRef.current = winsMap;
+    }
+  }, [isOnlineMode, previousPhase, state?.phase, state?.players, state?.reaperOwnerId,
+    state?.highestBidderId, resolutionResult, isWaitingForResolution]);
+
+  // penaltyフェーズでの判定失敗モーダル表示（オンラインモード）
+  // resolutionからpenaltyフェーズへ遷移した場合（死神がめくられた）
+  useEffect(() => {
+    if (!isOnlineMode) return;
+
+    if (previousPhase === 'resolution' && state?.phase === 'penalty') {
+      if (resolutionResult || isWaitingForResolution) return;
+
+      const bidder = state.players.find(p => p.id === state.highestBidderId);
+      const reaperOwner = state.players.find(p => p.id === state.reaperOwnerId);
+
+      setIsWaitingForResolution(true);
+      setPhaseTransitionVisible(false);
+
+      if (resolutionTimerRef.current) {
+        clearTimeout(resolutionTimerRef.current);
+      }
+
+      const delayMs = 600; // カード表示を見せてからモーダル表示
+      resolutionTimerRef.current = setTimeout(() => {
+        setIsWaitingForResolution(false);
+        setResolutionResult({
+          type: 'fail',
+          playerName: bidder?.name || 'Unknown',
+          targetName: reaperOwner?.name,
+        });
+      }, delayMs);
+    }
+  }, [isOnlineMode, previousPhase, state?.phase, state?.players, state?.highestBidderId, state?.reaperOwnerId, resolutionResult, isWaitingForResolution]);
+
+  // ペナルティフェーズ完了後にround_endに遷移した場合、待機フラグを立てる（オンラインモード）
+  useEffect(() => {
+    if (!isOnlineMode) return;
+
+    // penaltyからround_endへ遷移した場合
+    if (previousPhase === 'penalty' && state?.phase === 'round_end') {
+      // まだ待機状態でなければフラグを立てる
+      if (!isWaitingNextRound) {
+        setLastResolutionState(state);
+        setIsWaitingNextRound(true);
+      }
+    }
+  }, [isOnlineMode, previousPhase, state?.phase, state, isWaitingNextRound]);
+
+  // round_setupフェーズに遷移したら待機状態をリセット（プレイマットの色が変わる）
+  useEffect(() => {
+    if (state?.phase === 'round_setup' && previousPhase !== 'round_setup') {
+      setIsWaitingNextRound(false);
+      setLastResolutionState(null);
+      setPendingWinUpdatePlayerId(null);
+    }
+  }, [state?.phase, previousPhase]);
+
+  // previousPhaseの更新（他の全ての状態監視useEffectの後に実行）
+  useEffect(() => {
+    if (state && state.phase !== previousPhase) {
+      setPreviousPhase(state.phase);
+    }
+  }, [state?.phase, previousPhase]);
 
   // 判定結果ログの検知
   useLayoutEffect(() => {
@@ -408,6 +548,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   const currentPlayer = isOnlineMode
     ? (targetState?.players.find(p => p.id === currentViewPlayerId) || null)
     : testCurrentPlayer;
+
+  // 最新の状態からのisReady（ボタン色変更用、lastResolutionStateではなく最新のstateを使用）
+  const latestIsReady = isOnlineMode
+    ? (state?.players.find(p => p.id === currentViewPlayerId)?.isReady ?? false)
+    : (currentPlayer?.isReady ?? false);
 
   // ========================================
   // 早期リターン（全てのフックの後に配置）
@@ -717,12 +862,8 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
   const handleAdvancePhase = async () => {
     if (targetState.phase === 'round_end') {
       if (actionLoading) return;
-      // オンラインモードではADVANCE_PHASEを送信しない
-      // Cloud Functions側で自動的に次のフェーズに進む
-      if (isOnlineMode) {
-        // オンラインモードでは何もしない（サーバー側で自動進行）
-        return;
-      }
+      // オンラインモードでもADVANCE_PHASEを送信
+      // サーバー側でadvance_roundアクションとして処理される
       await dispatch({ type: 'ADVANCE_PHASE' });
     }
   };
@@ -732,12 +873,10 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
     await dispatch({ type: 'SELECT_NEXT_PLAYER', nextPlayerId });
   };
 
-  const handleNextRound = () => {
-    // 待機フラグを解除して、最新の状態を表示
-    setIsWaitingNextRound(false);
-    setLastResolutionState(null);
-    // 勝利更新保留を解除（これで色が更新される）
-    setPendingWinUpdatePlayerId(null);
+  const handleNextRound = async () => {
+    // ボタン押下時はサーバーにアクション送信のみ
+    // 状態リセットはround_setupフェーズ受信時に行う
+    await handleAdvancePhase();
   };
 
   const handleResolutionComplete = () => {
@@ -761,8 +900,11 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
         mode: isOnlineMode ? 'online' : 'test',
       });
     } else if (isOnlineMode && state && wasSuccess) {
-      // オンラインモードで、game_over以外で、かつ判定成功の場合のみ待機フラグを立てる
-      // 判定失敗(ペナルティ)の場合は、ペナルティモーダルが表示されるので「次のラウンド」ボタンは不要
+      // オンラインモードで、game_over以外で、かつ判定成功の場合は待機フラグを立てる
+      setLastResolutionState(state);
+      setIsWaitingNextRound(true);
+    } else if (isOnlineMode && state && state.phase === 'round_end') {
+      // 判定失敗後にペナルティを経てround_endに来た場合も待機フラグを立てる
       setLastResolutionState(state);
       setIsWaitingNextRound(true);
     }
@@ -896,13 +1038,14 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
           {/* アクションボタンエリア */}
           <View style={styles.actionArea}>
             {isWaitingNextRound ? (
-              // 判定結果確認待ち：「次のラウンド」ボタンを表示
+              // 判定結果確認待ち：「次のラウンド」ボタンを表示（押下済みなら色変更）
               <Button
-                variant="gold"
-                onPress={handleNextRound}
+                variant={latestIsReady ? "wood" : "gold"}
+                onPress={latestIsReady ? undefined : handleNextRound}
+                disabled={latestIsReady || actionLoading}
                 style={styles.actionButton}
               >
-                {language === 'ja' ? '次のラウンド' : 'Next Round'}
+                {actionLoading ? <ActivityIndicator size="small" color={colors.tavern.bg} /> : (language === 'ja' ? '次のラウンド' : 'Next Round')}
               </Button>
             ) : (
               <>
@@ -1033,21 +1176,14 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
                 )}
 
                 {targetState.phase === 'round_end' && (
-                  <>
-                    {isOnlineMode ? (
-                      <Text style={styles.waitingText}>
-                        {language === 'ja' ? '次のラウンドを準備中...' : 'Preparing next round...'}
-                      </Text>
-                    ) : (
-                      <Button
-                        variant="gold"
-                        onPress={handleAdvancePhase}
-                        style={styles.actionButton}
-                      >
-                        {t.game.nextRound}
-                      </Button>
-                    )}
-                  </>
+                  <Button
+                    variant="gold"
+                    onPress={handleAdvancePhase}
+                    disabled={actionLoading}
+                    style={styles.actionButton}
+                  >
+                    {actionLoading ? <ActivityIndicator size="small" color={colors.tavern.bg} /> : t.game.nextRound}
+                  </Button>
                 )}
               </>
             )}
@@ -1176,6 +1312,9 @@ export function GameScreen({ navigation, route }: GameScreenProps) {
           visible={phaseTransitionVisible && !isWaitingNextRound}
           onComplete={() => setPhaseTransitionVisible(false)}
         />
+
+        {/* スロットリングフィードバックトースト */}
+        <ThrottleToast visible={toastVisible} onHide={hideToast} />
       </SafeAreaView>
     </LinearGradient>
   );

@@ -19,6 +19,7 @@ import {
   convertFirestoreToLocalGameState,
   createActionDispatcher,
   type PlayerNicknameMap,
+  type ActionDispatchResult,
 } from './online';
 
 // ========================================
@@ -33,7 +34,7 @@ interface UseOnlineGameResult {
   loading: boolean;
   error: Error | null;
   gameState: LocalGameState | null;
-  dispatchAction: (action: GameAction) => Promise<void>;
+  dispatchAction: (action: GameAction) => Promise<ActionDispatchResult>;
 }
 
 // ========================================
@@ -51,6 +52,14 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
 
   // playerIdからindexへの変換用マップ
   const playerIndexMapRef = useRef<Map<string, number>>(new Map());
+
+  // アクションディスパッチャーのインスタンスを保持（スロットリング状態維持のため）
+  const dispatcherRef = useRef<ReturnType<typeof createActionDispatcher> | null>(null);
+
+  // roomIdまたはuserが変更されたらディスパッチャーをリセット
+  useEffect(() => {
+    dispatcherRef.current = null;
+  }, [roomId, user?.userId]);
 
   // ========================================
   // ハートビート送信（独立したフック）
@@ -124,19 +133,21 @@ export function useOnlineGame({ roomId }: UseOnlineGameProps): UseOnlineGameResu
   // ========================================
   // ゲームアクションを送信
   // ========================================
-  const dispatchAction = useCallback(async (action: GameAction) => {
+  const dispatchAction = useCallback(async (action: GameAction): Promise<ActionDispatchResult> => {
     if (!user || !roomId) {
       throw new Error('User or room not available');
     }
 
-    // アクションディスパッチャーを作成して実行
-    const dispatcher = createActionDispatcher({
-      roomId,
-      userId: user.userId,
-      getPlayerIndex: (playerId: string) => playerIndexMapRef.current.get(playerId),
-    });
+    // ディスパッチャーがなければ作成（スロットリング状態維持のため再利用）
+    if (!dispatcherRef.current) {
+      dispatcherRef.current = createActionDispatcher({
+        roomId,
+        userId: user.userId,
+        getPlayerIndex: (playerId: string) => playerIndexMapRef.current.get(playerId),
+      });
+    }
 
-    await dispatcher(action);
+    return await dispatcherRef.current(action);
   }, [user, roomId]);
 
   return {

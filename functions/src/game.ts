@@ -742,10 +742,12 @@ async function handleRevealCard(
       };
     }
 
+    // round_endに遷移する前に全員のisReadyをリセット
+    const resetPlayers = newPlayers.map(p => ({ ...p, isReady: false }));
     return {
       newState: {
         phase: 'round_end',
-        players: newPlayers,
+        players: resetPlayers,
         resolution: {
           ...gameState.resolution,
           revealedCards: newRevealedCards,
@@ -867,10 +869,12 @@ async function handleSelectPenaltyCard(
     }
 
     // 他人の死神で脱落した場合はラウンド終了
+    // round_endに遷移する前に全員のisReadyをリセット
+    const resetPlayers = newPlayers.map(p => ({ ...p, isReady: false }));
     return {
       newState: {
         phase: 'round_end',
-        players: newPlayers,
+        players: resetPlayers,
         firstPlayerIndex: gameState.penalty.revealedDevilPlayerIndex,
       },
       logs: [{
@@ -882,10 +886,12 @@ async function handleSelectPenaltyCard(
   }
 
   // カードが残っている場合はラウンド終了
+  // round_endに遷移する前に全員のisReadyをリセット
+  const resetPlayers = newPlayers.map(p => ({ ...p, isReady: false }));
   return {
     newState: {
       phase: 'round_end',
-      players: newPlayers,
+      players: resetPlayers,
     },
     logs: [],
   };
@@ -941,6 +947,45 @@ async function handleSelectNextPlayer(
       message: `ラウンド${newRoundNumber}開始（次プレイヤー選択）`,
       playerIndex: payload.nextPlayerIndex,
     }],
+  };
+}
+
+/**
+ * 次のラウンドに進む（round_endフェーズからの明示的な遷移）
+ * クライアントから「次のラウンド」ボタン押下時に呼び出される
+ * 全員がボタンを押してから次のラウンドに進む
+ */
+async function handleAdvanceRound(
+  gameState: GameState,
+  playerIndex: number
+): Promise<{ newState: Partial<GameState>; logs: any[] }> {
+  if (gameState.phase !== 'round_end') {
+    throw new Error('Invalid phase for advancing round');
+  }
+
+  // プレイヤーを「準備完了」状態にする
+  const newPlayers = [...gameState.players];
+  newPlayers[playerIndex] = {
+    ...newPlayers[playerIndex],
+    isReady: true,
+  };
+
+  // 全員準備完了チェック（脱落していないプレイヤーのみ）
+  const allReady = newPlayers
+    .filter(p => !p.isEliminated)
+    .every(p => p.isReady);
+
+  if (allReady) {
+    // 全員確認完了 → 次のラウンドへ進む
+    return advanceToNextRound({ ...gameState, players: newPlayers });
+  }
+
+  // まだ全員確認完了してない → isReadyだけ更新
+  return {
+    newState: {
+      players: newPlayers,
+    },
+    logs: [],
   };
 }
 
@@ -1113,26 +1158,17 @@ export const processGameAction = functions.firestore.onDocumentCreated(
           result = await handleSelectNextPlayer(gameState, playerIndex, payload);
           break;
 
+        // 次のラウンドに進む（round_end → round_setup）
+        case 'advance_round':
+          result = await handleAdvanceRound(gameState, playerIndex);
+          break;
+
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
 
-      // round_endフェーズに入った場合、自動的に次のラウンドに進む
-      if (result.newState.phase === 'round_end') {
-        const nextRoundResult = advanceToNextRound({
-          ...gameState,
-          ...result.newState,
-        } as GameState);
-
-        // 次のラウンドの状態をマージ
-        result = {
-          newState: {
-            ...result.newState,
-            ...nextRoundResult.newState,
-          },
-          logs: [...result.logs, ...nextRoundResult.logs],
-        };
-      }
+      // round_endフェーズに入った場合、そのままFirestoreに書き込む
+      // クライアントで判定結果モーダルを表示後、advance_roundアクションで次のラウンドに進む
 
       // トランザクションで状態更新
       await db.runTransaction(async (transaction) => {

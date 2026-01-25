@@ -22,7 +22,19 @@ export interface ActionDispatcherOptions {
   throttleMs?: number;
 }
 
-export type ActionDispatcher = (action: GameAction) => Promise<void>;
+/**
+ * アクション送信の結果
+ */
+export interface ActionDispatchResult {
+  /** アクションが送信されたかどうか */
+  sent: boolean;
+  /** スロットリングで無視されたかどうか */
+  throttled: boolean;
+  /** スロットリングの理由（throttled=trueの場合のみ） */
+  reason?: 'pending' | 'rate_limited';
+}
+
+export type ActionDispatcher = (action: GameAction) => Promise<ActionDispatchResult>;
 
 // ========================================
 // アクションディスパッチャー作成
@@ -39,17 +51,17 @@ export function createActionDispatcher(
   let lastActionTime = 0;
   let pending = false;
 
-  return async function dispatch(action: GameAction): Promise<void> {
+  return async function dispatch(action: GameAction): Promise<ActionDispatchResult> {
     // API使用量削減: 重複送信防止
-    // 送信中の場合は無視
+    // 送信中の場合はスロットリング
     if (pending) {
-      return;
+      return { sent: false, throttled: true, reason: 'pending' };
     }
 
-    // 前回送信から一定時間経過していない場合は無視
+    // 前回送信から一定時間経過していない場合はスロットリング
     const now = Date.now();
     if (now - lastActionTime < throttleMs) {
-      return;
+      return { sent: false, throttled: true, reason: 'rate_limited' };
     }
 
     pending = true;
@@ -58,6 +70,7 @@ export function createActionDispatcher(
       await dispatchActionInternal(action, roomId, userId, getPlayerIndex);
       // 送信成功時にタイムスタンプを記録
       lastActionTime = Date.now();
+      return { sent: true, throttled: false };
     } finally {
       // 送信完了（成功/失敗問わず）でフラグをリセット
       pending = false;
@@ -161,9 +174,9 @@ async function dispatchActionInternal(
       break;
     }
 
-    // フェーズ進行（クライアントから呼び出さない）
+    // フェーズ進行（round_end → round_setup）
     case 'ADVANCE_PHASE':
-      console.warn('ADVANCE_PHASE should not be called from client');
+      await sendGameAction(roomId, userId, 'advance_round', {});
       break;
 
     // ゲームリセット

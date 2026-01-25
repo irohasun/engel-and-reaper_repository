@@ -148,6 +148,9 @@ export const translations = {
         winsLabel: '勝',
         cardsLabel: '枚',
       },
+      throttle: {
+        tooFast: '少々お待ちください',
+      },
     },
     result: {
       victoryTitle: '勝利！',
@@ -303,6 +306,9 @@ export const translations = {
         winsLabel: 'win',
         winsLabelPlural: 'wins',
         cardsLabel: 'cards',
+      },
+      throttle: {
+        tooFast: 'Please wait a moment',
       },
     },
     result: {

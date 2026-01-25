@@ -131,7 +131,8 @@ export type GameActionType =
   | 'pass'
   | 'reveal_card'
   | 'select_penalty_card'
-  | 'select_next_player';
+  | 'select_next_player'
+  | 'advance_round';
 
 export interface GameActionPayload {
   place_card: { cardIndex: number };
@@ -145,6 +146,7 @@ export interface GameActionPayload {
   reveal_card: { targetPlayerIndex: number };
   select_penalty_card: { cardIndex: number };
   select_next_player: { nextPlayerIndex: number };
+  advance_round: {};
 }
 
 export interface GameAction<T extends GameActionType = GameActionType> {
